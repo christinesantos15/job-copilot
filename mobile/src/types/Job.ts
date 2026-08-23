@@ -1,9 +1,18 @@
+export type JobSourceType = 
+  | 'linkedin'
+  | 'mycareersfuture'
+  | 'indeed'
+  | 'jobstreet'
+  | 'company'
+  | 'mock';
+
 export type ApplicationStatus =
   | 'interested'
   | 'applied'
   | 'interview'
   | 'rejected'
   | 'offer';
+
 export type Job = {
   id: string;
 
@@ -14,7 +23,8 @@ export type Job = {
   salary?: string;
   type: string;
 
-  source: string;
+  source: JobSourceType;
+  sourceLabel: string;
   sourceUrl: string;
 
   description: string;
@@ -25,4 +35,7 @@ export type Job = {
   skills: string[];
 
   applicationStatus?: ApplicationStatus;
+
+  matchScore?: number;
+  matchReasons?: string[];
 };

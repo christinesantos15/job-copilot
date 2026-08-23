@@ -34,7 +34,7 @@ export default function JobDetailsScreen({
       )}
 
       <Text>{job.type}</Text>
-      <Text>Source: {job.source}</Text>
+      <Text>Source: {job.sourceLabel}</Text>
 
       {job.postedDate && (
         <Text>Posted: {job.postedDate}</Text>

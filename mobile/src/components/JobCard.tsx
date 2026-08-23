@@ -1,4 +1,5 @@
 import { useRef } from 'react';
+
 import {
   Animated,
   PanResponder,
@@ -7,6 +8,9 @@ import {
 } from 'react-native';
 
 import { Job } from '../types/Job';
+
+import { calculateMatchScore } from '../utils/calculateMatchScore';
+import { candidateProfile } from '../data/candidateProfile';
 
 type JobCardProps = {
   job: Job;
@@ -19,28 +23,45 @@ export default function JobCard({
   onInterested,
   onSkipped,
 }: JobCardProps) {
-  const position = useRef(new Animated.ValueXY()).current;
+  const match = calculateMatchScore(
+    job,
+    candidateProfile
+  );
+
+  const position =
+    useRef(new Animated.ValueXY()).current;
 
   const rotate = position.x.interpolate({
     inputRange: [-200, 0, 200],
-    outputRange: ['-10deg', '0deg', '10deg'],
+    outputRange: [
+      '-10deg',
+      '0deg',
+      '10deg',
+    ],
     extrapolate: 'clamp',
   });
 
-  const interestedOpacity = position.x.interpolate({
-    inputRange: [0, 100],
-    outputRange: [0, 1],
-    extrapolate: 'clamp',
-  });
+  const interestedOpacity =
+    position.x.interpolate({
+      inputRange: [0, 100],
+      outputRange: [0, 1],
+      extrapolate: 'clamp',
+    });
 
-  const skippedOpacity = position.x.interpolate({
-    inputRange: [-100, 0],
-    outputRange: [1, 0],
-    extrapolate: 'clamp',
-  });
+  const skippedOpacity =
+    position.x.interpolate({
+      inputRange: [-100, 0],
+      outputRange: [1, 0],
+      extrapolate: 'clamp',
+    });
 
-  function swipeOffScreen(direction: 'left' | 'right') {
-    const destinationX = direction === 'right' ? 500 : -500;
+  function swipeOffScreen(
+    direction: 'left' | 'right'
+  ) {
+    const destinationX =
+      direction === 'right'
+        ? 500
+        : -500;
 
     Animated.timing(position, {
       toValue: {
@@ -63,34 +84,50 @@ export default function JobCard({
     });
   }
 
-  const panResponder = useRef(PanResponder.create({
-    onMoveShouldSetPanResponder: (_, gestureState) => {
-      return Math.abs(gestureState.dx) > 10;
-    },
+  const panResponder = useRef(
+    PanResponder.create({
+      onMoveShouldSetPanResponder: (
+        _,
+        gestureState
+      ) => {
+        return (
+          Math.abs(
+            gestureState.dx
+          ) > 10
+        );
+      },
 
-    onPanResponderMove: (_, gestureState) => {
-      position.setValue({
-        x: gestureState.dx,
-        y: gestureState.dy,
-      });
-    },
+      onPanResponderMove: (
+        _,
+        gestureState
+      ) => {
+        position.setValue({
+          x: gestureState.dx,
+          y: gestureState.dy,
+        });
+      },
 
-    onPanResponderRelease: (_, gestureState) => {
-      if (gestureState.dx > 100) {
-        swipeOffScreen('right');
-      } else if (gestureState.dx < -100) {
-        swipeOffScreen('left');
-      } else {
-        Animated.spring(position, {
-          toValue: {
-            x: 0,
-            y: 0,
-          },
-          useNativeDriver: false,
-        }).start();
-      }
-    },
-  })
+      onPanResponderRelease: (
+        _,
+        gestureState
+      ) => {
+        if (gestureState.dx > 100) {
+          swipeOffScreen('right');
+        } else if (
+          gestureState.dx < -100
+        ) {
+          swipeOffScreen('left');
+        } else {
+          Animated.spring(position, {
+            toValue: {
+              x: 0,
+              y: 0,
+            },
+            useNativeDriver: false,
+          }).start();
+        }
+      },
+    })
   ).current;
 
   return (
@@ -110,7 +147,8 @@ export default function JobCard({
         style={[
           styles.interestedLabel,
           {
-            opacity: interestedOpacity,
+            opacity:
+              interestedOpacity,
           },
         ]}
       >
@@ -121,7 +159,8 @@ export default function JobCard({
         style={[
           styles.skippedLabel,
           {
-            opacity: skippedOpacity,
+            opacity:
+              skippedOpacity,
           },
         ]}
       >
@@ -132,11 +171,53 @@ export default function JobCard({
         {job.title}
       </Text>
 
-      <Text>Company: {job.company}</Text>
-      <Text>Location: {job.location}</Text>
-      <Text>Salary: {job.salary}</Text>
-      <Text>Type: {job.type}</Text>
-      <Text>Source: {job.source}</Text>
+      <Text style={styles.matchScore}>
+        Match score: {match.score}%
+      </Text>
+
+      {match.reasons.length > 0 && (
+        <>
+          <Text
+            style={styles.matchHeading}
+          >
+            Why it matches
+          </Text>
+
+          {match.reasons
+            .slice(0, 3)
+            .map((reason) => (
+              <Text
+                key={reason}
+                style={styles.matchReason}
+              >
+                ✓ {reason}
+              </Text>
+            ))}
+        </>
+      )}
+
+      <Text>
+        Company: {job.company}
+      </Text>
+
+      <Text>
+        Location: {job.location}
+      </Text>
+
+      {job.salary && (
+        <Text>
+          Salary: {job.salary}
+        </Text>
+      )}
+
+      <Text>
+        Type: {job.type}
+      </Text>
+
+      <Text>
+        Source:{' '}
+        {job.sourceLabel ?? job.source}
+      </Text>
     </Animated.View>
   );
 }
@@ -157,6 +238,23 @@ const styles = StyleSheet.create({
     fontSize: 20,
     fontWeight: 'bold',
     marginBottom: 10,
+  },
+
+  matchScore: {
+    fontSize: 18,
+    fontWeight: '600',
+    marginBottom: 12,
+  },
+
+  matchHeading: {
+    fontSize: 16,
+    fontWeight: 'bold',
+    marginTop: 4,
+    marginBottom: 6,
+  },
+
+  matchReason: {
+    marginBottom: 3,
   },
 
   interestedLabel: {

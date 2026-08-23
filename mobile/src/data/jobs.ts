@@ -8,11 +8,16 @@ export const jobs: Job[] = [
     location: 'Singapore',
     salary: '$3,000 - $4,000 per month',
     type: 'Full-time',
-    source: 'LinkedIn',
+
+    source: 'linkedin',
+    sourceLabel: 'LinkedIn',
     sourceUrl: 'https://www.linkedin.com/jobs/',
+
     description:
       'Build and maintain frontend applications using React and TypeScript. Work with designers and backend engineers to deliver responsive web experiences.',
+
     postedDate: '2026-08-22',
+
     skills: [
       'React',
       'TypeScript',
@@ -21,6 +26,7 @@ export const jobs: Job[] = [
       'CSS',
     ],
   },
+
   {
     id: 'job-002',
     title: 'Software Engineer',
@@ -28,11 +34,16 @@ export const jobs: Job[] = [
     location: 'Singapore',
     salary: '$4,000 - $5,000 per month',
     type: 'Full-time',
-    source: 'MyCareersFuture',
+
+    source: 'mycareersfuture',
+    sourceLabel: 'MyCareersFuture',
     sourceUrl: 'https://www.mycareersfuture.gov.sg/',
+
     description:
       'Develop full-stack software features, integrate APIs, work with databases, and collaborate with the engineering team.',
+
     postedDate: '2026-08-21',
+
     skills: [
       'JavaScript',
       'Python',
@@ -41,6 +52,7 @@ export const jobs: Job[] = [
       'Git',
     ],
   },
+
   {
     id: 'job-003',
     title: 'UI/UX Designer',
@@ -48,10 +60,16 @@ export const jobs: Job[] = [
     location: 'Singapore',
     salary: '$3,500 - $4,200 per month',
     type: 'Full-time',
-    source: 'JobStreet',
+
+    source: 'jobstreet',
+    sourceLabel: 'JobStreet',
     sourceUrl: 'https://www.jobstreet.com.sg/',
+
     description:
       'Design user interfaces and experiences for web and mobile products while collaborating with product and engineering teams.',
+
+    postedDate: '2026-08-20',
+
     skills: [
       'Figma',
       'UI Design',

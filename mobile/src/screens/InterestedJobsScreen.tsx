@@ -74,7 +74,7 @@ export default function InterestedJobsScreen({
               <Text>{job.type}</Text>
 
               <Text>
-                Source: {job.source}
+                Source: {job.sourceLabel}
               </Text>
 
               <Text style={styles.status}>
@@ -143,8 +143,7 @@ export default function InterestedJobsScreen({
           </View>
         ))
       )}
-    <View
-    style={styles.backButtonContainer}>
+    <View style={styles.backButtonContainer}>
       <Button
         title="Back"
         onPress={onBack}
