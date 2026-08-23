@@ -25,6 +25,7 @@ import InterestedJobsScreen from './src/screens/InterestedJobsScreen';
 import JobFeedScreen from './src/screens/JobFeedScreen';
 import NoMoreJobsScreen from './src/screens/NoMoreJobsScreen';
 import JobDetailsScreen from './src/screens/JobDetailsScreen';
+import ApplicationsScreen from './src/screens/ApplicationsScreen';
 
 type DetailsOrigin =
   | 'feed'
@@ -43,6 +44,11 @@ export default function App() {
   const [
     showInterested,
     setShowInterested,
+  ] = useState(false);
+
+  const [
+    showApplications,
+    setShowApplications,
   ] = useState(false);
 
   const [
@@ -222,6 +228,7 @@ export default function App() {
 
   function restartFeed() {
     setCurrentIndex(0);
+    setInterestedJobs([]);
   }
 
   if (isLoading) {
@@ -247,6 +254,17 @@ export default function App() {
       <JobDetailsScreen
         job={selectedJob}
         onBack={closeJobDetails}
+      />
+    );
+  }
+
+  if (showApplications) {
+    return (
+      <ApplicationsScreen
+        jobs={interestedJobs}
+        onBack={() => {
+          setShowApplications(false);
+        }}
       />
     );
   }
@@ -304,6 +322,9 @@ export default function App() {
       onViewDetails={
         openJobDetailsFromFeed
       }
+      onViewApplications={() => {
+        setShowApplications(true);
+      }}
     />
   );
 }

@@ -15,6 +15,7 @@ type JobFeedScreenProps = {
   onSkipped: (job: Job) => void;
   onViewInterested: () => void;
   onViewDetails: (job: Job) => void;
+  onViewApplications: () => void;
 };
 
 export default function JobFeedScreen({
@@ -24,6 +25,7 @@ export default function JobFeedScreen({
   onSkipped,
   onViewInterested,
   onViewDetails,
+  onViewApplications,
 }: JobFeedScreenProps) {
   return (
     <View style={styles.container}>
@@ -38,19 +40,26 @@ export default function JobFeedScreen({
         onSkipped={onSkipped}
       />
 
-      <Button
-        title="View Job Details"
-        onPress={() => onViewDetails(job)}
-      />
+      <View style={styles.actions}>
+        <Button
+          title="View Job Details"
+          onPress={() => onViewDetails(job)}
+        />
 
-      <Text style={styles.counter}>
-        Interested jobs: {interestedCount}
-      </Text>
+        <Text style={styles.counter}>
+          Interested jobs: {interestedCount}
+        </Text>
 
-      <Button
-        title="View Interested Jobs"
-        onPress={onViewInterested}
-      />
+        <Button
+          title="View Interested Jobs"
+          onPress={onViewInterested}
+        />
+
+        <Button
+          title="Applications"
+          onPress={onViewApplications}
+        />
+      </View>
     </View>
   );
 }
@@ -70,7 +79,13 @@ const styles = StyleSheet.create({
     marginBottom: 20,
   },
 
+  actions: {
+    width: '100%',
+    gap: 10,
+  },
+
   counter: {
-    marginBottom: 12,
+    textAlign: 'center',
+    marginVertical: 4,
   },
 });

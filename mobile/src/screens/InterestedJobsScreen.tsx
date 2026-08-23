@@ -1,5 +1,6 @@
 import {
   Button,
+  ScrollView,
   Pressable,
   StyleSheet,
   Text,
@@ -41,7 +42,7 @@ export default function InterestedJobsScreen({
   onStatusChange,
 }: InterestedJobsScreenProps) {
   return (
-    <View style={styles.container}>
+    <ScrollView contentContainerStyle={styles.container}>
       <Text style={styles.heading}>
         Interested Jobs
       </Text>
@@ -147,16 +148,14 @@ export default function InterestedJobsScreen({
         title="Back"
         onPress={onBack}
       />
-    </View>
+    </ScrollView>
   );
 }
 
 const styles = StyleSheet.create({
   container: {
-    flex: 1,
+    flexGrow: 1,
     backgroundColor: '#fff',
-    alignItems: 'center',
-    justifyContent: 'center',
     padding: 20,
   },
 
