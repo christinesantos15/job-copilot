@@ -76,25 +76,48 @@ export default function App() {
   const job =
     availableJobs[currentIndex];
 
+  /*
+   * LOAD APP DATA
+   *
+   * Loads:
+   * - saved feed position
+   * - saved interested/application jobs
+   * - jobs from all configured sources
+   */
   useEffect(() => {
     async function loadAppData() {
       try {
-        const savedIndex =
-          await loadCurrentIndex();
-
-        const savedInterestedJobs =
-          await loadInterestedJobs();
-
-        const fetchedJobs =
-          await fetchAllJobs();
+        const [
+          savedIndex,
+          savedInterestedJobs,
+          fetchedJobs,
+        ] = await Promise.all([
+          loadCurrentIndex(),
+          loadInterestedJobs(),
+          fetchAllJobs(),
+        ]);
 
         setAvailableJobs(
           fetchedJobs
         );
 
-        setCurrentIndex(
-          savedIndex
-        );
+        /*
+         * The number of jobs may change
+         * between app launches.
+         *
+         * If the saved index is outside
+         * the new feed, restart from 0.
+         */
+        if (
+          savedIndex <
+          fetchedJobs.length
+        ) {
+          setCurrentIndex(
+            savedIndex
+          );
+        } else {
+          setCurrentIndex(0);
+        }
 
         setInterestedJobs(
           savedInterestedJobs
@@ -112,6 +135,9 @@ export default function App() {
     loadAppData();
   }, []);
 
+  /*
+   * SAVE CURRENT FEED POSITION
+   */
   useEffect(() => {
     if (isLoading) {
       return;
@@ -130,6 +156,9 @@ export default function App() {
     isLoading,
   ]);
 
+  /*
+   * SAVE INTERESTED / APPLICATION JOBS
+   */
   useEffect(() => {
     if (isLoading) {
       return;
@@ -148,6 +177,9 @@ export default function App() {
     isLoading,
   ]);
 
+  /*
+   * SWIPE RIGHT
+   */
   function handleInterested(
     selectedJob: Job
   ) {
@@ -166,6 +198,7 @@ export default function App() {
 
         const interestedJob: Job = {
           ...selectedJob,
+
           applicationStatus:
             'interested',
         };
@@ -188,6 +221,9 @@ export default function App() {
     );
   }
 
+  /*
+   * SWIPE LEFT
+   */
   function handleSkipped(
     selectedJob: Job
   ) {
@@ -202,38 +238,53 @@ export default function App() {
     );
   }
 
+  /*
+   * UPDATE APPLICATION STATUS
+   */
   function handleStatusChange(
     jobId: string,
     status: ApplicationStatus
   ) {
     setInterestedJobs(
       (previousJobs) =>
-        previousJobs.map((job) =>
-          job.id === jobId
-            ? {
-                ...job,
-                applicationStatus:
-                  status,
-              }
-            : job
+        previousJobs.map(
+          (job) =>
+            job.id === jobId
+              ? {
+                  ...job,
+
+                  applicationStatus:
+                    status,
+                }
+              : job
         )
     );
   }
 
+  /*
+   * OPEN DETAILS FROM FEED
+   */
   function openJobDetailsFromFeed(
     selectedJob: Job
   ) {
-    setDetailsOrigin('feed');
+    setDetailsOrigin(
+      'feed'
+    );
 
     setSelectedJob(
       selectedJob
     );
   }
 
+  /*
+   * OPEN DETAILS FROM INTERESTED JOBS
+   */
   function openJobDetailsFromInterested(
     selectedJob: Job
   ) {
-    setShowInterested(false);
+    setShowInterested(
+      false
+    );
 
     setDetailsOrigin(
       'interested'
@@ -244,6 +295,9 @@ export default function App() {
     );
   }
 
+  /*
+   * CLOSE JOB DETAILS
+   */
   function closeJobDetails() {
     setSelectedJob(null);
 
@@ -251,17 +305,28 @@ export default function App() {
       detailsOrigin ===
       'interested'
     ) {
-      setShowInterested(true);
+      setShowInterested(
+        true
+      );
     }
 
     setDetailsOrigin(null);
   }
 
+  /*
+   * RESTART FEED
+   *
+   * Important:
+   * This does NOT delete interested
+   * jobs or application history.
+   */
   function restartFeed() {
     setCurrentIndex(0);
-    setInterestedJobs([]);
   }
 
+  /*
+   * LOADING SCREEN
+   */
   if (isLoading) {
     return (
       <View
@@ -280,6 +345,9 @@ export default function App() {
     );
   }
 
+  /*
+   * JOB DETAILS SCREEN
+   */
   if (selectedJob) {
     return (
       <JobDetailsScreen
@@ -291,6 +359,9 @@ export default function App() {
     );
   }
 
+  /*
+   * APPLICATION TRACKER
+   */
   if (showApplications) {
     return (
       <ApplicationsScreen
@@ -306,6 +377,9 @@ export default function App() {
     );
   }
 
+  /*
+   * INTERESTED JOBS
+   */
   if (showInterested) {
     return (
       <InterestedJobsScreen
@@ -327,6 +401,9 @@ export default function App() {
     );
   }
 
+  /*
+   * END OF JOB FEED
+   */
   if (!job) {
     return (
       <NoMoreJobsScreen
@@ -345,6 +422,9 @@ export default function App() {
     );
   }
 
+  /*
+   * MAIN JOB FEED
+   */
   return (
     <JobFeedScreen
       job={job}
