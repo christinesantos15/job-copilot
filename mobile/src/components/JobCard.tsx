@@ -192,6 +192,25 @@ const match = evaluateJob(job);
         </>
       )}
 
+{match.warnings.length > 0 && (
+  <>
+    <Text style={styles.warningHeading}>
+      Things to watch
+    </Text>
+
+    {match.warnings
+      .slice(0, 3)
+      .map((warning) => (
+        <Text
+          key={warning}
+          style={styles.warningText}
+        >
+          ⚠ {warning}
+        </Text>
+      ))}
+  </>
+)}
+
       <Text>
         Company: {job.company}
       </Text>
@@ -252,6 +271,17 @@ const styles = StyleSheet.create({
   matchReason: {
     marginBottom: 3,
   },
+
+  warningHeading: {
+  fontSize: 16,
+  fontWeight: 'bold',
+  marginTop: 10,
+  marginBottom: 6,
+},
+
+warningText: {
+  marginBottom: 3,
+},
 
   interestedLabel: {
     position: 'absolute',
