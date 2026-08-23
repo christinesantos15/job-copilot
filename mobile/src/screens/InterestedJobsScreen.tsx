@@ -143,11 +143,13 @@ export default function InterestedJobsScreen({
           </View>
         ))
       )}
-
+    <View
+    style={styles.backButtonContainer}>
       <Button
         title="Back"
         onPress={onBack}
       />
+    </View>
     </ScrollView>
   );
 }
@@ -157,6 +159,12 @@ const styles = StyleSheet.create({
     flexGrow: 1,
     backgroundColor: '#fff',
     padding: 20,
+    paddingBottom: 100,
+  },
+
+  backButtonContainer: {
+    marginTop: 20,
+    marginBottom: 20,
   },
 
   heading: {
