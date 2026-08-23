@@ -14,6 +14,7 @@ type JobFeedScreenProps = {
   onInterested: (job: Job) => void;
   onSkipped: (job: Job) => void;
   onViewInterested: () => void;
+  onViewDetails: (job: Job) => void;
 };
 
 export default function JobFeedScreen({
@@ -22,6 +23,7 @@ export default function JobFeedScreen({
   onInterested,
   onSkipped,
   onViewInterested,
+  onViewDetails,
 }: JobFeedScreenProps) {
   return (
     <View style={styles.container}>
@@ -33,6 +35,11 @@ export default function JobFeedScreen({
         job={job}
         onInterested={onInterested}
         onSkipped={onSkipped}
+      />
+
+      <Button
+        title="View Job Details"
+        onPress={() => onViewDetails(job)}
       />
 
       <Text style={styles.counter}>

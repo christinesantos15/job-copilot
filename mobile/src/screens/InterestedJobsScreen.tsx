@@ -1,5 +1,6 @@
 import {
   Button,
+  Pressable,
   StyleSheet,
   Text,
   View,
@@ -10,11 +11,13 @@ import { Job } from '../types/Job';
 type InterestedJobsScreenProps = {
   interestedJobs: Job[];
   onBack: () => void;
+  onViewDetails: (job: Job) => void;
 };
 
 export default function InterestedJobsScreen({
   interestedJobs,
   onBack,
+  onViewDetails,
 }: InterestedJobsScreenProps) {
   return (
     <View style={styles.container}>
@@ -25,10 +28,11 @@ export default function InterestedJobsScreen({
       {interestedJobs.length === 0 ? (
         <Text>No interested jobs yet.</Text>
       ) : (
-        interestedJobs.map((job, index) => (
-          <View
-            key={index}
+        interestedJobs.map((job) => (
+          <Pressable
+            key={job.id}
             style={styles.jobCard}
+            onPress={() => onViewDetails(job)}
           >
             <Text style={styles.jobTitle}>
               {job.title}
@@ -39,12 +43,16 @@ export default function InterestedJobsScreen({
             <Text>{job.salary}</Text>
             <Text>{job.type}</Text>
             <Text>Source: {job.source}</Text>
-          </View>
+
+            <Text style={styles.tapHint}>
+              Tap to view details
+            </Text>
+          </Pressable>
         ))
       )}
 
       <Button
-        title="Back to Jobs"
+        title="Back"
         onPress={onBack}
       />
     </View>
@@ -79,5 +87,10 @@ const styles = StyleSheet.create({
     fontSize: 20,
     fontWeight: 'bold',
     marginBottom: 8,
+  },
+
+  tapHint: {
+    marginTop: 10,
+    fontWeight: '600',
   },
 });
