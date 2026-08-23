@@ -2,29 +2,15 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 
 import { Job } from '../types/Job';
 
-const CURRENT_INDEX_KEY = 'job-copilot:current-index';
-const INTERESTED_JOBS_KEY = 'job-copilot:interested-jobs';
+const INTERESTED_JOBS_KEY =
+  'job-copilot:interested-jobs';
 
-export async function saveCurrentIndex(
-  currentIndex: number
-) {
-  await AsyncStorage.setItem(
-    CURRENT_INDEX_KEY,
-    currentIndex.toString()
-  );
-}
+const SEEN_JOB_IDS_KEY =
+  'job-copilot:seen-job-ids';
 
-export async function loadCurrentIndex() {
-  const storedIndex = await AsyncStorage.getItem(
-    CURRENT_INDEX_KEY
-  );
-
-  if (storedIndex === null) {
-    return 0;
-  }
-
-  return Number(storedIndex);
-}
+/*
+ * INTERESTED / APPLICATION JOBS
+ */
 
 export async function saveInterestedJobs(
   jobs: Job[]
@@ -36,13 +22,54 @@ export async function saveInterestedJobs(
 }
 
 export async function loadInterestedJobs(): Promise<Job[]> {
-  const storedJobs = await AsyncStorage.getItem(
-    INTERESTED_JOBS_KEY
-  );
+  const storedJobs =
+    await AsyncStorage.getItem(
+      INTERESTED_JOBS_KEY
+    );
 
   if (storedJobs === null) {
     return [];
   }
 
   return JSON.parse(storedJobs);
+}
+
+/*
+ * FEED SESSION HISTORY
+ */
+
+export async function saveSeenJobIds(
+  jobIds: string[]
+) {
+  await AsyncStorage.setItem(
+    SEEN_JOB_IDS_KEY,
+    JSON.stringify(jobIds)
+  );
+}
+
+export async function loadSeenJobIds(): Promise<string[]> {
+  const storedIds =
+    await AsyncStorage.getItem(
+      SEEN_JOB_IDS_KEY
+    );
+
+  if (storedIds === null) {
+    return [];
+  }
+
+  return JSON.parse(storedIds);
+}
+
+/*
+ * RESTART FEED SESSION
+ *
+ * Clears browsing progress only.
+ * Interested jobs and application
+ * history are preserved.
+ */
+
+export async function clearFeedSession() {
+  await AsyncStorage.removeItem(
+    SEEN_JOB_IDS_KEY
+  );
 }

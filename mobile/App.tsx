@@ -8,10 +8,11 @@ import {
 } from 'react-native';
 
 import {
-  loadCurrentIndex,
+  clearFeedSession,
   loadInterestedJobs,
-  saveCurrentIndex,
+  loadSeenJobIds,
   saveInterestedJobs,
+  saveSeenJobIds,
 } from './src/storage/jobStorage';
 
 import {
@@ -39,14 +40,14 @@ export default function App() {
   ] = useState<Job[]>([]);
 
   const [
-    currentIndex,
-    setCurrentIndex,
-  ] = useState(0);
-
-  const [
     interestedJobs,
     setInterestedJobs,
   ] = useState<Job[]>([]);
+
+  const [
+    seenJobIds,
+    setSeenJobIds,
+  ] = useState<string[]>([]);
 
   const [
     showInterested,
@@ -73,27 +74,35 @@ export default function App() {
     setIsLoading,
   ] = useState(true);
 
+  /*
+   * BUILD FEED FROM UNSEEN JOBS
+   */
+
+  const feedJobs =
+    availableJobs.filter(
+      (job) =>
+        !seenJobIds.includes(
+          job.id
+        )
+    );
+
   const job =
-    availableJobs[currentIndex];
+    feedJobs[0];
 
   /*
    * LOAD APP DATA
-   *
-   * Loads:
-   * - saved feed position
-   * - saved interested/application jobs
-   * - jobs from all configured sources
    */
+
   useEffect(() => {
     async function loadAppData() {
       try {
         const [
-          savedIndex,
           savedInterestedJobs,
+          savedSeenJobIds,
           fetchedJobs,
         ] = await Promise.all([
-          loadCurrentIndex(),
           loadInterestedJobs(),
+          loadSeenJobIds(),
           fetchAllJobs(),
         ]);
 
@@ -101,26 +110,12 @@ export default function App() {
           fetchedJobs
         );
 
-        /*
-         * The number of jobs may change
-         * between app launches.
-         *
-         * If the saved index is outside
-         * the new feed, restart from 0.
-         */
-        if (
-          savedIndex <
-          fetchedJobs.length
-        ) {
-          setCurrentIndex(
-            savedIndex
-          );
-        } else {
-          setCurrentIndex(0);
-        }
-
         setInterestedJobs(
           savedInterestedJobs
+        );
+
+        setSeenJobIds(
+          savedSeenJobIds
         );
       } catch (error) {
         console.error(
@@ -136,29 +131,10 @@ export default function App() {
   }, []);
 
   /*
-   * SAVE CURRENT FEED POSITION
+   * SAVE INTERESTED /
+   * APPLICATION JOBS
    */
-  useEffect(() => {
-    if (isLoading) {
-      return;
-    }
 
-    saveCurrentIndex(
-      currentIndex
-    ).catch((error) => {
-      console.error(
-        'Failed to save current job index:',
-        error
-      );
-    });
-  }, [
-    currentIndex,
-    isLoading,
-  ]);
-
-  /*
-   * SAVE INTERESTED / APPLICATION JOBS
-   */
   useEffect(() => {
     if (isLoading) {
       return;
@@ -178,8 +154,56 @@ export default function App() {
   ]);
 
   /*
+   * SAVE SEEN JOB IDS
+   */
+
+  useEffect(() => {
+    if (isLoading) {
+      return;
+    }
+
+    saveSeenJobIds(
+      seenJobIds
+    ).catch((error) => {
+      console.error(
+        'Failed to save seen job IDs:',
+        error
+      );
+    });
+  }, [
+    seenJobIds,
+    isLoading,
+  ]);
+
+  /*
+   * MARK JOB AS SEEN
+   */
+
+  function markJobAsSeen(
+    selectedJob: Job
+  ) {
+    setSeenJobIds(
+      (previousIds) => {
+        if (
+          previousIds.includes(
+            selectedJob.id
+          )
+        ) {
+          return previousIds;
+        }
+
+        return [
+          ...previousIds,
+          selectedJob.id,
+        ];
+      }
+    );
+  }
+
+  /*
    * SWIPE RIGHT
    */
+
   function handleInterested(
     selectedJob: Job
   ) {
@@ -198,7 +222,6 @@ export default function App() {
 
         const interestedJob: Job = {
           ...selectedJob,
-
           applicationStatus:
             'interested',
         };
@@ -210,9 +233,8 @@ export default function App() {
       }
     );
 
-    setCurrentIndex(
-      (previousIndex) =>
-        previousIndex + 1
+    markJobAsSeen(
+      selectedJob
     );
 
     console.log(
@@ -224,12 +246,12 @@ export default function App() {
   /*
    * SWIPE LEFT
    */
+
   function handleSkipped(
     selectedJob: Job
   ) {
-    setCurrentIndex(
-      (previousIndex) =>
-        previousIndex + 1
+    markJobAsSeen(
+      selectedJob
     );
 
     console.log(
@@ -241,6 +263,7 @@ export default function App() {
   /*
    * UPDATE APPLICATION STATUS
    */
+
   function handleStatusChange(
     jobId: string,
     status: ApplicationStatus
@@ -252,7 +275,6 @@ export default function App() {
             job.id === jobId
               ? {
                   ...job,
-
                   applicationStatus:
                     status,
                 }
@@ -264,6 +286,7 @@ export default function App() {
   /*
    * OPEN DETAILS FROM FEED
    */
+
   function openJobDetailsFromFeed(
     selectedJob: Job
   ) {
@@ -277,8 +300,10 @@ export default function App() {
   }
 
   /*
-   * OPEN DETAILS FROM INTERESTED JOBS
+   * OPEN DETAILS FROM
+   * INTERESTED JOBS
    */
+
   function openJobDetailsFromInterested(
     selectedJob: Job
   ) {
@@ -296,8 +321,9 @@ export default function App() {
   }
 
   /*
-   * CLOSE JOB DETAILS
+   * CLOSE DETAILS
    */
+
   function closeJobDetails() {
     setSelectedJob(null);
 
@@ -316,17 +342,28 @@ export default function App() {
   /*
    * RESTART FEED
    *
-   * Important:
-   * This does NOT delete interested
-   * jobs or application history.
+   * Clear feed history only.
+   * Saved/interested/application
+   * jobs are preserved.
    */
-  function restartFeed() {
-    setCurrentIndex(0);
+
+  async function restartFeed() {
+    setSeenJobIds([]);
+
+    try {
+      await clearFeedSession();
+    } catch (error) {
+      console.error(
+        'Failed to clear feed session:',
+        error
+      );
+    }
   }
 
   /*
    * LOADING SCREEN
    */
+
   if (isLoading) {
     return (
       <View
@@ -346,8 +383,9 @@ export default function App() {
   }
 
   /*
-   * JOB DETAILS SCREEN
+   * JOB DETAILS
    */
+
   if (selectedJob) {
     return (
       <JobDetailsScreen
@@ -360,8 +398,9 @@ export default function App() {
   }
 
   /*
-   * APPLICATION TRACKER
+   * APPLICATIONS
    */
+
   if (showApplications) {
     return (
       <ApplicationsScreen
@@ -380,6 +419,7 @@ export default function App() {
   /*
    * INTERESTED JOBS
    */
+
   if (showInterested) {
     return (
       <InterestedJobsScreen
@@ -402,8 +442,9 @@ export default function App() {
   }
 
   /*
-   * END OF JOB FEED
+   * END OF FEED
    */
+
   if (!job) {
     return (
       <NoMoreJobsScreen
@@ -425,6 +466,7 @@ export default function App() {
   /*
    * MAIN JOB FEED
    */
+
   return (
     <JobFeedScreen
       job={job}
