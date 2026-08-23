@@ -14,7 +14,11 @@ import {
   saveInterestedJobs,
 } from './src/storage/jobStorage';
 
-import { Job } from './src/types/Job';
+import {
+  ApplicationStatus,
+  Job,
+} from './src/types/Job';
+
 import { jobs } from './src/data/jobs';
 
 import InterestedJobsScreen from './src/screens/InterestedJobsScreen';
@@ -22,28 +26,56 @@ import JobFeedScreen from './src/screens/JobFeedScreen';
 import NoMoreJobsScreen from './src/screens/NoMoreJobsScreen';
 import JobDetailsScreen from './src/screens/JobDetailsScreen';
 
-type DetailsOrigin = 'feed' | 'interested' | null;
+type DetailsOrigin =
+  | 'feed'
+  | 'interested'
+  | null;
 
 export default function App() {
-  const [currentIndex, setCurrentIndex] = useState(0);
-  const [interestedJobs, setInterestedJobs] = useState<Job[]>([]);
-  const [showInterested, setShowInterested] = useState(false);
-  const [selectedJob, setSelectedJob] = useState<Job | null>(null);
-  const [detailsOrigin, setDetailsOrigin] =
-    useState<DetailsOrigin>(null);
+  const [currentIndex, setCurrentIndex] =
+    useState(0);
 
-  const [isLoading, setIsLoading] = useState(true);
+  const [
+    interestedJobs,
+    setInterestedJobs,
+  ] = useState<Job[]>([]);
+
+  const [
+    showInterested,
+    setShowInterested,
+  ] = useState(false);
+
+  const [
+    selectedJob,
+    setSelectedJob,
+  ] = useState<Job | null>(null);
+
+  const [
+    detailsOrigin,
+    setDetailsOrigin,
+  ] = useState<DetailsOrigin>(null);
+
+  const [
+    isLoading,
+    setIsLoading,
+  ] = useState(true);
 
   const job = jobs[currentIndex];
 
   useEffect(() => {
     async function loadSavedState() {
       try {
-        const savedIndex = await loadCurrentIndex();
-        const savedInterestedJobs = await loadInterestedJobs();
+        const savedIndex =
+          await loadCurrentIndex();
+
+        const savedInterestedJobs =
+          await loadInterestedJobs();
 
         setCurrentIndex(savedIndex);
-        setInterestedJobs(savedInterestedJobs);
+
+        setInterestedJobs(
+          savedInterestedJobs
+        );
       } catch (error) {
         console.error(
           'Failed to load saved job state:',
@@ -62,7 +94,9 @@ export default function App() {
       return;
     }
 
-    saveCurrentIndex(currentIndex).catch((error) => {
+    saveCurrentIndex(
+      currentIndex
+    ).catch((error) => {
       console.error(
         'Failed to save current job index:',
         error
@@ -75,7 +109,9 @@ export default function App() {
       return;
     }
 
-    saveInterestedJobs(interestedJobs).catch((error) => {
+    saveInterestedJobs(
+      interestedJobs
+    ).catch((error) => {
       console.error(
         'Failed to save interested jobs:',
         error
@@ -83,24 +119,37 @@ export default function App() {
     });
   }, [interestedJobs, isLoading]);
 
-  function handleInterested(selectedJob: Job) {
-    setInterestedJobs((previousJobs) => {
-      const alreadyInterested = previousJobs.some(
-        (job) => job.id === selectedJob.id
-      );
+  function handleInterested(
+    selectedJob: Job
+  ) {
+    setInterestedJobs(
+      (previousJobs) => {
+        const alreadyInterested =
+          previousJobs.some(
+            (job) =>
+              job.id === selectedJob.id
+          );
 
-      if (alreadyInterested) {
-        return previousJobs;
+        if (alreadyInterested) {
+          return previousJobs;
+        }
+
+        const interestedJob: Job = {
+          ...selectedJob,
+          applicationStatus:
+            'interested',
+        };
+
+        return [
+          ...previousJobs,
+          interestedJob,
+        ];
       }
-
-      return [
-        ...previousJobs,
-      selectedJob,
-      ];
-    });
+    );
 
     setCurrentIndex(
-      (previousIndex) => previousIndex + 1
+      (previousIndex) =>
+        previousIndex + 1
     );
 
     console.log(
@@ -109,9 +158,12 @@ export default function App() {
     );
   }
 
-  function handleSkipped(selectedJob: Job) {
+  function handleSkipped(
+    selectedJob: Job
+  ) {
     setCurrentIndex(
-      (previousIndex) => previousIndex + 1
+      (previousIndex) =>
+        previousIndex + 1
     );
 
     console.log(
@@ -120,8 +172,29 @@ export default function App() {
     );
   }
 
-  function openJobDetailsFromFeed(selectedJob: Job) {
+  function handleStatusChange(
+    jobId: string,
+    status: ApplicationStatus
+  ) {
+    setInterestedJobs(
+      (previousJobs) =>
+        previousJobs.map((job) =>
+          job.id === jobId
+            ? {
+                ...job,
+                applicationStatus:
+                  status,
+              }
+            : job
+        )
+    );
+  }
+
+  function openJobDetailsFromFeed(
+    selectedJob: Job
+  ) {
     setDetailsOrigin('feed');
+
     setSelectedJob(selectedJob);
   }
 
@@ -129,14 +202,18 @@ export default function App() {
     selectedJob: Job
   ) {
     setShowInterested(false);
+
     setDetailsOrigin('interested');
+
     setSelectedJob(selectedJob);
   }
 
   function closeJobDetails() {
     setSelectedJob(null);
 
-    if (detailsOrigin === 'interested') {
+    if (
+      detailsOrigin === 'interested'
+    ) {
       setShowInterested(true);
     }
 
@@ -149,8 +226,14 @@ export default function App() {
 
   if (isLoading) {
     return (
-      <View style={styles.loadingContainer}>
-        <ActivityIndicator size="large" />
+      <View
+        style={
+          styles.loadingContainer
+        }
+      >
+        <ActivityIndicator
+          size="large"
+        />
 
         <Text>
           Loading Job Copilot...
@@ -171,12 +254,17 @@ export default function App() {
   if (showInterested) {
     return (
       <InterestedJobsScreen
-        interestedJobs={interestedJobs}
+        interestedJobs={
+          interestedJobs
+        }
         onBack={() => {
           setShowInterested(false);
         }}
         onViewDetails={
           openJobDetailsFromInterested
+        }
+        onStatusChange={
+          handleStatusChange
         }
       />
     );
@@ -185,11 +273,15 @@ export default function App() {
   if (!job) {
     return (
       <NoMoreJobsScreen
-        interestedCount={interestedJobs.length}
+        interestedCount={
+          interestedJobs.length
+        }
         onViewInterested={() => {
           setShowInterested(true);
         }}
-        onRestartFeed={restartFeed}
+        onRestartFeed={
+          restartFeed
+        }
       />
     );
   }
@@ -197,13 +289,21 @@ export default function App() {
   return (
     <JobFeedScreen
       job={job}
-      interestedCount={interestedJobs.length}
-      onInterested={handleInterested}
-      onSkipped={handleSkipped}
+      interestedCount={
+        interestedJobs.length
+      }
+      onInterested={
+        handleInterested
+      }
+      onSkipped={
+        handleSkipped
+      }
       onViewInterested={() => {
         setShowInterested(true);
       }}
-      onViewDetails={openJobDetailsFromFeed}
+      onViewDetails={
+        openJobDetailsFromFeed
+      }
     />
   );
 }

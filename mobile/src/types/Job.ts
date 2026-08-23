@@ -1,3 +1,9 @@
+export type ApplicationStatus =
+  | 'interested'
+  | 'applied'
+  | 'interview'
+  | 'rejected'
+  | 'offer';
 export type Job = {
   id: string;
 
@@ -17,4 +23,6 @@ export type Job = {
   closingDate?: string;
 
   skills: string[];
+
+  applicationStatus?: ApplicationStatus;
 };

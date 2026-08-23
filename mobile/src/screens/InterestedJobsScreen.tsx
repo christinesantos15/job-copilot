@@ -6,18 +6,39 @@ import {
   View,
 } from 'react-native';
 
-import { Job } from '../types/Job';
+import {
+  ApplicationStatus,
+  Job,
+} from '../types/Job';
 
 type InterestedJobsScreenProps = {
   interestedJobs: Job[];
   onBack: () => void;
   onViewDetails: (job: Job) => void;
+  onStatusChange: (
+    jobId: string,
+    status: ApplicationStatus
+  ) => void;
 };
+
+function formatStatus(
+  status?: ApplicationStatus
+) {
+  if (!status) {
+    return 'Interested';
+  }
+
+  return (
+    status.charAt(0).toUpperCase() +
+    status.slice(1)
+  );
+}
 
 export default function InterestedJobsScreen({
   interestedJobs,
   onBack,
   onViewDetails,
+  onStatusChange,
 }: InterestedJobsScreenProps) {
   return (
     <View style={styles.container}>
@@ -29,25 +50,96 @@ export default function InterestedJobsScreen({
         <Text>No interested jobs yet.</Text>
       ) : (
         interestedJobs.map((job) => (
-          <Pressable
+          <View
             key={job.id}
             style={styles.jobCard}
-            onPress={() => onViewDetails(job)}
           >
-            <Text style={styles.jobTitle}>
-              {job.title}
-            </Text>
+            <Pressable
+              onPress={() =>
+                onViewDetails(job)
+              }
+            >
+              <Text style={styles.jobTitle}>
+                {job.title}
+              </Text>
 
-            <Text>{job.company}</Text>
-            <Text>{job.location}</Text>
-            <Text>{job.salary}</Text>
-            <Text>{job.type}</Text>
-            <Text>Source: {job.source}</Text>
+              <Text>{job.company}</Text>
+              <Text>{job.location}</Text>
 
-            <Text style={styles.tapHint}>
-              Tap to view details
-            </Text>
-          </Pressable>
+              {job.salary && (
+                <Text>{job.salary}</Text>
+              )}
+
+              <Text>{job.type}</Text>
+
+              <Text>
+                Source: {job.source}
+              </Text>
+
+              <Text style={styles.status}>
+                Status:{' '}
+                {formatStatus(
+                  job.applicationStatus
+                )}
+              </Text>
+
+              <Text style={styles.tapHint}>
+                Tap to view details
+              </Text>
+            </Pressable>
+
+            <View style={styles.statusActions}>
+              <Button
+                title="Interested"
+                onPress={() =>
+                  onStatusChange(
+                    job.id,
+                    'interested'
+                  )
+                }
+              />
+
+              <Button
+                title="Applied"
+                onPress={() =>
+                  onStatusChange(
+                    job.id,
+                    'applied'
+                  )
+                }
+              />
+
+              <Button
+                title="Interview"
+                onPress={() =>
+                  onStatusChange(
+                    job.id,
+                    'interview'
+                  )
+                }
+              />
+
+              <Button
+                title="Rejected"
+                onPress={() =>
+                  onStatusChange(
+                    job.id,
+                    'rejected'
+                  )
+                }
+              />
+
+              <Button
+                title="Offer"
+                onPress={() =>
+                  onStatusChange(
+                    job.id,
+                    'offer'
+                  )
+                }
+              />
+            </View>
+          </View>
         ))
       )}
 
@@ -89,8 +181,18 @@ const styles = StyleSheet.create({
     marginBottom: 8,
   },
 
+  status: {
+    marginTop: 10,
+    fontWeight: '600',
+  },
+
   tapHint: {
     marginTop: 10,
     fontWeight: '600',
+  },
+
+  statusActions: {
+    marginTop: 12,
+    gap: 8,
   },
 });
