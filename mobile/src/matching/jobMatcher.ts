@@ -1,14 +1,19 @@
 import { Job } from '../types/Job';
 import { jobProfile } from '../profile/jobProfile';
 
-type MatchResult = {
+export type MatchResult = {
   score: number;
   reasons: string[];
+  warnings: string[];
+  matchedSkills: string[];
 };
 
 export function evaluateJob(
   job: Job
 ): MatchResult {
+  const title = job.title.toLowerCase();
+  const location = job.location.toLowerCase();
+
   const searchableText = [
     job.title,
     job.description,
@@ -17,71 +22,144 @@ export function evaluateJob(
     .join(' ')
     .toLowerCase();
 
-  const title =
-    job.title.toLowerCase();
-
-  const location =
-    job.location.toLowerCase();
-
   let score = 0;
 
   const reasons: string[] = [];
+  const warnings: string[] = [];
+  const matchedSkills: string[] = [];
 
-  for (const role of jobProfile.targetRoles) {
-    if (title.includes(role)) {
-      score += 20;
-      reasons.push(`Target role: ${role}`);
-    } else if (
-      searchableText.includes(role)
-    ) {
-      score += 10;
-      reasons.push(`Related role: ${role}`);
-    }
+  // -------------------------
+  // TARGET ROLE
+  // Maximum: +30
+  // -------------------------
+
+  const targetRole = jobProfile.targetRoles.find(
+    (role) => title.includes(role)
+  );
+
+  if (targetRole) {
+    score += 30;
+
+    reasons.push(
+      `Target role: ${targetRole}`
+    );
   }
+
+  // -------------------------
+  // LOCATION
+  // Maximum: +20
+  // -------------------------
+
+  const locationMatch =
+    jobProfile.preferredLocations.find(
+      (preferredLocation) =>
+        location.includes(
+          preferredLocation
+        )
+    );
+
+  if (locationMatch) {
+    score += 20;
+
+    reasons.push(
+      `Location: ${locationMatch}`
+    );
+  }
+
+  // -------------------------
+  // CAREER LEVEL
+  // Maximum: +15
+  // -------------------------
+
+  const preferredLevel =
+    jobProfile.preferredLevels.find(
+      (level) => title.includes(level)
+    );
+
+  if (preferredLevel) {
+    score += 15;
+
+    reasons.push(
+      `Career level: ${preferredLevel}`
+    );
+  }
+
+  // -------------------------
+  // SKILLS
+  // Maximum: +35
+  // -------------------------
 
   for (
     const skill of
     jobProfile.preferredSkills
   ) {
-    if (
-      searchableText.includes(skill)
-    ) {
-      score += 10;
-      reasons.push(`Skill: ${skill}`);
+    if (searchableText.includes(skill)) {
+      matchedSkills.push(skill);
     }
   }
 
-  for (
-    const level of
-    jobProfile.preferredLevels
-  ) {
-    if (title.includes(level)) {
-      score += 20;
-      reasons.push(`Level: ${level}`);
-    }
+  const uniqueMatchedSkills = [
+    ...new Set(matchedSkills),
+  ];
+
+  const skillScore = Math.min(
+    uniqueMatchedSkills.length * 7,
+    35
+  );
+
+  score += skillScore;
+
+  uniqueMatchedSkills.forEach((skill) => {
+    reasons.push(`Skill: ${skill}`);
+  });
+
+  // -------------------------
+  // SENIORITY PENALTY
+  // -------------------------
+
+  const seniorLevel =
+    jobProfile.seniorLevels.find(
+      (level) => title.includes(level)
+    );
+
+  if (seniorLevel) {
+    score -= 25;
+
+    warnings.push(
+      `Seniority mismatch: ${seniorLevel}`
+    );
   }
 
-  for (
-    const preferredLocation of
-    jobProfile.preferredLocations
-  ) {
-    if (
-      location.includes(
-        preferredLocation
-      )
-    ) {
-      score += 10;
-      reasons.push(
-        `Location: ${preferredLocation}`
-      );
-    }
+  // -------------------------
+  // SPECIALIZATION PENALTY
+  // -------------------------
+
+  const unrelatedSpecialization =
+    jobProfile.unrelatedSpecializations.find(
+      (specialization) =>
+        title.includes(specialization)
+    );
+
+  if (unrelatedSpecialization) {
+    score -= 15;
+
+    warnings.push(
+      `Specialization mismatch: ${unrelatedSpecialization}`
+    );
   }
+
+  // Never return below 0 or above 100.
+
+  const finalScore = Math.max(
+    0,
+    Math.min(score, 100)
+  );
 
   return {
-    score,
-    reasons: [
-      ...new Set(reasons),
-    ],
+    score: finalScore,
+    reasons: [...new Set(reasons)],
+    warnings: [...new Set(warnings)],
+    matchedSkills: uniqueMatchedSkills,
   };
 }
 
@@ -89,14 +167,15 @@ export function addMatchScores(
   jobs: Job[]
 ): Job[] {
   return jobs.map((job) => {
-    const result =
-      evaluateJob(job);
+    const result = evaluateJob(job);
 
     return {
       ...job,
       matchScore: result.score,
-      matchReasons:
-        result.reasons,
+      matchReasons: [
+        ...result.reasons,
+        ...result.warnings,
+      ],
     };
   });
 }

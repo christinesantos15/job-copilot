@@ -9,8 +9,7 @@ import {
 
 import { Job } from '../types/Job';
 
-import { calculateMatchScore } from '../utils/calculateMatchScore';
-import { candidateProfile } from '../data/candidateProfile';
+import { evaluateJob } from '../matching/jobMatcher';
 
 type JobCardProps = {
   job: Job;
@@ -23,10 +22,7 @@ export default function JobCard({
   onInterested,
   onSkipped,
 }: JobCardProps) {
-  const match = calculateMatchScore(
-    job,
-    candidateProfile
-  );
+const match = evaluateJob(job);
 
   const position =
     useRef(new Animated.ValueXY()).current;

@@ -3,6 +3,9 @@ export type JobProfile = {
   preferredSkills: string[];
   preferredLocations: string[];
   preferredLevels: string[];
+
+  seniorLevels: string[];
+  unrelatedSpecializations: string[];
 };
 
 export const jobProfile: JobProfile = {
@@ -28,6 +31,7 @@ export const jobProfile: JobProfile = {
     'rest api',
     'git',
     'docker',
+    'figma',
   ],
 
   preferredLocations: [
@@ -38,6 +42,26 @@ export const jobProfile: JobProfile = {
     'junior',
     'graduate',
     'entry level',
+    'entry-level',
     'intern',
+    'associate',
+  ],
+
+  seniorLevels: [
+    'senior',
+    'lead',
+    'principal',
+    'staff',
+    'manager',
+    'director',
+    'head of',
+  ],
+
+  unrelatedSpecializations: [
+    'cyber security',
+    'cybersecurity',
+    'security engineer',
+    'embedded',
+    'blockchain',
   ],
 };
