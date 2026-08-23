@@ -32,6 +32,7 @@ export default function JobFeedScreen({
       </Text>
 
       <JobCard
+        key={job.id}
         job={job}
         onInterested={onInterested}
         onSkipped={onSkipped}

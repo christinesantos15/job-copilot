@@ -8,11 +8,13 @@ import {
 type NoMoreJobsScreenProps = {
   interestedCount: number;
   onViewInterested: () => void;
+  onRestartFeed: () => void;
 };
 
 export default function NoMoreJobsScreen({
   interestedCount,
   onViewInterested,
+  onRestartFeed,
 }: NoMoreJobsScreenProps) {
   return (
     <View style={styles.container}>
@@ -31,6 +33,11 @@ export default function NoMoreJobsScreen({
       <Button
         title="View Interested Jobs"
         onPress={onViewInterested}
+      />
+
+      <Button
+        title="Restart Job Feed"
+        onPress={onRestartFeed}
       />
     </View>
   );
