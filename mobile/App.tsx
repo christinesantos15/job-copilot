@@ -8,7 +8,7 @@ import {
 } from 'react-native';
 
 import {
-  clearAllJobData,
+  clearFeedSession,
   loadInterestedJobs,
   loadSeenJobIds,
   saveInterestedJobs,
@@ -338,18 +338,20 @@ export default function App() {
 
   /*
    * RESTART FEED
+   *
+   * Reset only the Discover session.
+   * Matches and application history stay saved.
    */
 
   async function restartFeed() {
     try {
       setIsLoading(true);
 
-      await clearAllJobData();
+      await clearFeedSession();
 
       const refreshedJobs =
         await fetchAllJobs();
 
-      setInterestedJobs([]);
       setSeenJobIds([]);
 
       setAvailableJobs(
@@ -361,7 +363,12 @@ export default function App() {
       setActiveTab('discover');
 
       console.log(
-        'Job feed restarted.'
+        'Discover feed restarted.'
+      );
+
+      console.log(
+        'Saved matches preserved:',
+        interestedJobs.length
       );
 
       console.log(
