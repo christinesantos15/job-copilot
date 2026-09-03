@@ -244,8 +244,27 @@ export const leverSource: JobSource = {
   async fetchJobs(): Promise<Job[]> {
     const results = await Promise.all(
       LEVER_COMPANIES.map(
-        (company) =>
-          fetchLeverSite(company)
+        async (company) => {
+          try {
+            const jobs =
+              await fetchLeverSite(
+                company
+              );
+
+            console.log(
+              `Lever ${company.name}: loaded ${jobs.length} jobs`
+            );
+
+            return jobs;
+          } catch (error) {
+            console.error(
+              `Lever ${company.name} failed:`,
+              error
+            );
+
+            return [];
+          }
+        }
       )
     );
 

@@ -64,20 +64,35 @@ function interleaveSources(
 
 export async function fetchAllJobs(): Promise<Job[]> {
   const results = await Promise.all(
-    sources.map((source) =>
-      source.fetchJobs()
-    )
+    sources.map(async (source) => {
+      try {
+        const jobs = await source.fetchJobs();
+
+        console.log(
+          `${source.name}: loaded ${jobs.length} jobs`
+        );
+
+        return jobs;
+      } catch (error) {
+        console.error(
+          `${source.name} source failed:`,
+          error
+        );
+
+        return [];
+      }
+    })
   );
 
-const mixedJobs =
-  interleaveSources(results);
+  const mixedJobs =
+    interleaveSources(results);
 
-const uniqueJobs =
-  removeDuplicateJobs(
-    mixedJobs
+  const uniqueJobs =
+    removeDuplicateJobs(
+      mixedJobs
+    );
+
+  return addMatchScores(
+    uniqueJobs
   );
-
-return addMatchScores(
-  uniqueJobs
-);
 }
