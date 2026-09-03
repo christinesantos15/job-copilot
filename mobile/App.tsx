@@ -22,11 +22,16 @@ import {
 
 import { fetchAllJobs } from './src/sources/jobAggregator';
 
+import BottomNav, {
+  MainTab,
+} from './src/components/BottomNav';
+
 import InterestedJobsScreen from './src/screens/InterestedJobsScreen';
 import JobFeedScreen from './src/screens/JobFeedScreen';
 import NoMoreJobsScreen from './src/screens/NoMoreJobsScreen';
 import JobDetailsScreen from './src/screens/JobDetailsScreen';
 import ApplicationsScreen from './src/screens/ApplicationsScreen';
+import ProfileScreen from './src/screens/ProfileScreen';
 
 type DetailsOrigin =
   | 'feed'
@@ -50,16 +55,6 @@ export default function App() {
   ] = useState<string[]>([]);
 
   const [
-    showInterested,
-    setShowInterested,
-  ] = useState(false);
-
-  const [
-    showApplications,
-    setShowApplications,
-  ] = useState(false);
-
-  const [
     selectedJob,
     setSelectedJob,
   ] = useState<Job | null>(null);
@@ -73,6 +68,13 @@ export default function App() {
     isLoading,
     setIsLoading,
   ] = useState(true);
+
+  const [
+    activeTab,
+    setActiveTab,
+  ] = useState<MainTab>(
+    'discover'
+  );
 
   /*
    * BUILD FEED FROM UNSEEN JOBS
@@ -300,17 +302,12 @@ export default function App() {
   }
 
   /*
-   * OPEN DETAILS FROM
-   * INTERESTED JOBS
+   * OPEN DETAILS FROM MATCHES
    */
 
   function openJobDetailsFromInterested(
     selectedJob: Job
   ) {
-    setShowInterested(
-      false
-    );
-
     setDetailsOrigin(
       'interested'
     );
@@ -331,8 +328,8 @@ export default function App() {
       detailsOrigin ===
       'interested'
     ) {
-      setShowInterested(
-        true
+      setActiveTab(
+        'matches'
       );
     }
 
@@ -341,33 +338,17 @@ export default function App() {
 
   /*
    * RESTART FEED
-   *
-   * Development reset:
-   * - clears old interested jobs
-   * - clears seen jobs
-   * - fetches the jobs again
-   * - returns to a fresh feed
    */
 
   async function restartFeed() {
     try {
       setIsLoading(true);
 
-      /*
-       * Clear AsyncStorage first.
-       */
       await clearAllJobData();
 
-      /*
-       * Fetch a fresh copy of
-       * available jobs.
-       */
       const refreshedJobs =
         await fetchAllJobs();
 
-      /*
-       * Reset React state.
-       */
       setInterestedJobs([]);
       setSeenJobIds([]);
 
@@ -376,9 +357,8 @@ export default function App() {
       );
 
       setSelectedJob(null);
-      setShowInterested(false);
-      setShowApplications(false);
       setDetailsOrigin(null);
+      setActiveTab('discover');
 
       console.log(
         'Job feed restarted.'
@@ -413,7 +393,11 @@ export default function App() {
           size="large"
         />
 
-        <Text>
+        <Text
+          style={
+            styles.loadingText
+          }
+        >
           Loading Job Copilot...
         </Text>
       </View>
@@ -426,121 +410,155 @@ export default function App() {
 
   if (selectedJob) {
     return (
-      <JobDetailsScreen
-        job={selectedJob}
-        onBack={
-          closeJobDetails
-        }
-      />
+      <View style={styles.app}>
+        <View style={styles.content}>
+          <JobDetailsScreen
+            job={selectedJob}
+            onBack={
+              closeJobDetails
+            }
+          />
+        </View>
+
+        <BottomNav
+          activeTab={activeTab}
+          onTabChange={(tab) => {
+            setSelectedJob(null);
+            setDetailsOrigin(null);
+            setActiveTab(tab);
+          }}
+        />
+      </View>
     );
   }
 
   /*
-   * APPLICATIONS
-   */
-
-  if (showApplications) {
-    return (
-      <ApplicationsScreen
-        jobs={
-          interestedJobs
-        }
-        onBack={() => {
-          setShowApplications(
-            false
-          );
-        }}
-      />
-    );
-  }
-
-  /*
-   * INTERESTED JOBS
-   */
-
-  if (showInterested) {
-    return (
-      <InterestedJobsScreen
-        interestedJobs={
-          interestedJobs
-        }
-        onBack={() => {
-          setShowInterested(
-            false
-          );
-        }}
-        onViewDetails={
-          openJobDetailsFromInterested
-        }
-        onStatusChange={
-          handleStatusChange
-        }
-      />
-    );
-  }
-
-  /*
-   * END OF FEED
-   */
-
-  if (!job) {
-    return (
-      <NoMoreJobsScreen
-        interestedCount={
-          interestedJobs.length
-        }
-        onViewInterested={() => {
-          setShowInterested(
-            true
-          );
-        }}
-        onRestartFeed={
-          restartFeed
-        }
-      />
-    );
-  }
-
-  /*
-   * MAIN JOB FEED
+   * MAIN APP SHELL
    */
 
   return (
-    <JobFeedScreen
-      job={job}
-      interestedCount={
-        interestedJobs.length
-      }
-      onInterested={
-        handleInterested
-      }
-      onSkipped={
-        handleSkipped
-      }
-      onViewInterested={() => {
-        setShowInterested(
-          true
-        );
-      }}
-      onViewDetails={
-        openJobDetailsFromFeed
-      }
-      onViewApplications={() => {
-        setShowApplications(
-          true
-        );
-      }}
-    />
+    <View style={styles.app}>
+      <View style={styles.content}>
+        {activeTab ===
+          'discover' && (
+          <>
+            {job ? (
+              <JobFeedScreen
+                job={job}
+                interestedCount={
+                  interestedJobs.length
+                }
+                onInterested={
+                  handleInterested
+                }
+                onSkipped={
+                  handleSkipped
+                }
+                onViewInterested={() => {
+                  setActiveTab(
+                    'matches'
+                  );
+                }}
+                onViewDetails={
+                  openJobDetailsFromFeed
+                }
+                onViewApplications={() => {
+                  setActiveTab(
+                    'applications'
+                  );
+                }}
+              />
+            ) : (
+              <NoMoreJobsScreen
+                interestedCount={
+                  interestedJobs.length
+                }
+                onViewInterested={() => {
+                  setActiveTab(
+                    'matches'
+                  );
+                }}
+                onRestartFeed={
+                  restartFeed
+                }
+              />
+            )}
+          </>
+        )}
+
+        {activeTab ===
+          'matches' && (
+          <InterestedJobsScreen
+            interestedJobs={
+              interestedJobs
+            }
+            onBack={() => {
+              setActiveTab(
+                'discover'
+              );
+            }}
+            onViewDetails={
+              openJobDetailsFromInterested
+            }
+            onStatusChange={
+              handleStatusChange
+            }
+          />
+        )}
+
+        {activeTab ===
+          'applications' && (
+          <ApplicationsScreen
+            jobs={
+              interestedJobs
+            }
+            onBack={() => {
+              setActiveTab(
+                'discover'
+              );
+            }}
+          />
+        )}
+
+        {activeTab ===
+          'profile' && (
+          <ProfileScreen />
+        )}
+      </View>
+
+      <BottomNav
+        activeTab={activeTab}
+        onTabChange={
+          setActiveTab
+        }
+      />
+    </View>
   );
 }
 
 const styles =
   StyleSheet.create({
+    app: {
+      flex: 1,
+      backgroundColor:
+        '#080D1A',
+    },
+
+    content: {
+      flex: 1,
+    },
+
     loadingContainer: {
       flex: 1,
       alignItems: 'center',
       justifyContent:
         'center',
       gap: 12,
+      backgroundColor:
+        '#080D1A',
+    },
+
+    loadingText: {
+      color: '#FFFFFF',
     },
   });
