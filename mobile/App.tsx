@@ -8,7 +8,7 @@ import {
 } from 'react-native';
 
 import {
-  clearFeedSession,
+  clearAllJobData,
   loadInterestedJobs,
   loadSeenJobIds,
   saveInterestedJobs,
@@ -211,8 +211,8 @@ export default function App() {
       (previousJobs) => {
         const alreadyInterested =
           previousJobs.some(
-            (job) =>
-              job.id ===
+            (savedJob) =>
+              savedJob.id ===
               selectedJob.id
           );
 
@@ -271,14 +271,14 @@ export default function App() {
     setInterestedJobs(
       (previousJobs) =>
         previousJobs.map(
-          (job) =>
-            job.id === jobId
+          (savedJob) =>
+            savedJob.id === jobId
               ? {
-                  ...job,
+                  ...savedJob,
                   applicationStatus:
                     status,
                 }
-              : job
+              : savedJob
         )
     );
   }
@@ -342,21 +342,59 @@ export default function App() {
   /*
    * RESTART FEED
    *
-   * Clear feed history only.
-   * Saved/interested/application
-   * jobs are preserved.
+   * Development reset:
+   * - clears old interested jobs
+   * - clears seen jobs
+   * - fetches the jobs again
+   * - returns to a fresh feed
    */
 
   async function restartFeed() {
-    setSeenJobIds([]);
-
     try {
-      await clearFeedSession();
+      setIsLoading(true);
+
+      /*
+       * Clear AsyncStorage first.
+       */
+      await clearAllJobData();
+
+      /*
+       * Fetch a fresh copy of
+       * available jobs.
+       */
+      const refreshedJobs =
+        await fetchAllJobs();
+
+      /*
+       * Reset React state.
+       */
+      setInterestedJobs([]);
+      setSeenJobIds([]);
+
+      setAvailableJobs(
+        refreshedJobs
+      );
+
+      setSelectedJob(null);
+      setShowInterested(false);
+      setShowApplications(false);
+      setDetailsOrigin(null);
+
+      console.log(
+        'Job feed restarted.'
+      );
+
+      console.log(
+        'Jobs available:',
+        refreshedJobs.length
+      );
     } catch (error) {
       console.error(
-        'Failed to clear feed session:',
+        'Failed to restart job feed:',
         error
       );
+    } finally {
+      setIsLoading(false);
     }
   }
 

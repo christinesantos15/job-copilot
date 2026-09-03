@@ -27,15 +27,19 @@ export async function loadInterestedJobs(): Promise<Job[]> {
       INTERESTED_JOBS_KEY
     );
 
-  if (storedJobs === null) {
+  if (!storedJobs) {
     return [];
   }
 
-  return JSON.parse(storedJobs);
+  try {
+    return JSON.parse(storedJobs);
+  } catch {
+    return [];
+  }
 }
 
 /*
- * FEED SESSION HISTORY
+ * SEEN JOB IDS
  */
 
 export async function saveSeenJobIds(
@@ -53,23 +57,36 @@ export async function loadSeenJobIds(): Promise<string[]> {
       SEEN_JOB_IDS_KEY
     );
 
-  if (storedIds === null) {
+  if (!storedIds) {
     return [];
   }
 
-  return JSON.parse(storedIds);
+  try {
+    return JSON.parse(storedIds);
+  } catch {
+    return [];
+  }
 }
 
 /*
- * RESTART FEED SESSION
- *
- * Clears browsing progress only.
- * Interested jobs and application
- * history are preserved.
+ * RESTART FEED ONLY
  */
 
 export async function clearFeedSession() {
   await AsyncStorage.removeItem(
     SEEN_JOB_IDS_KEY
   );
+}
+
+/*
+ * FULL RESET
+ *
+ * Clears old development/test data.
+ */
+
+export async function clearAllJobData() {
+  await AsyncStorage.multiRemove([
+    INTERESTED_JOBS_KEY,
+    SEEN_JOB_IDS_KEY,
+  ]);
 }
