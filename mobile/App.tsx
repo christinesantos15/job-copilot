@@ -25,6 +25,11 @@ import {
 } from './src/types/Job';
 
 import {
+  JobFilters,
+  defaultJobFilters,
+} from './src/types/JobFilters';
+
+import {
   JobProfile,
   jobProfile,
 } from './src/profile/jobProfile';
@@ -43,7 +48,6 @@ import BottomNav, {
 
 import InterestedJobsScreen from './src/screens/InterestedJobsScreen';
 import JobFeedScreen from './src/screens/JobFeedScreen';
-import NoMoreJobsScreen from './src/screens/NoMoreJobsScreen';
 import JobDetailsScreen from './src/screens/JobDetailsScreen';
 import ApplicationsScreen from './src/screens/ApplicationsScreen';
 import ProfileScreen from './src/screens/ProfileScreen';
@@ -70,6 +74,13 @@ export default function App() {
   ] = useState<string[]>([]);
 
   const [
+    filters,
+    setFilters,
+  ] = useState<JobFilters>(
+    defaultJobFilters
+  );
+
+  const [
     preferences,
     setPreferences,
   ] = useState<JobProfile>(
@@ -79,7 +90,9 @@ export default function App() {
   const [
     selectedJob,
     setSelectedJob,
-  ] = useState<Job | null>(null);
+  ] = useState<Job | null>(
+    null
+  );
 
   const [
     detailsOrigin,
@@ -101,10 +114,18 @@ export default function App() {
   );
 
   /*
-   * BUILD FEED
+   * UNSEEN JOBS
+   *
+   * This is deliberately separate from
+   * filtered jobs.
+   *
+   * That lets us tell the difference between:
+   *
+   * 1. User actually finished the feed
+   * 2. Filters simply returned zero matches
    */
 
-  const feedJobs =
+  const unseenJobs =
     availableJobs.filter(
       (job) =>
         !seenJobIds.includes(
@@ -112,8 +133,141 @@ export default function App() {
         )
     );
 
+  /*
+   * FILTERED DISCOVER FEED
+   */
+
+  const feedJobs =
+    unseenJobs.filter(
+      (job) => {
+        /*
+         * KEYWORD
+         */
+
+        const keyword =
+          filters.keyword
+            .trim()
+            .toLowerCase();
+
+        if (keyword) {
+          const searchableText = [
+            job.title,
+            job.company,
+            job.description,
+            job.skills.join(' '),
+          ]
+            .join(' ')
+            .toLowerCase();
+
+          if (
+            !searchableText.includes(
+              keyword
+            )
+          ) {
+            return false;
+          }
+        }
+
+        /*
+         * LOCATION
+         */
+
+        const location =
+          filters.location
+            .trim()
+            .toLowerCase();
+
+        if (
+          location &&
+          !job.location
+            .toLowerCase()
+            .includes(location)
+        ) {
+          return false;
+        }
+
+        /*
+         * JOB TYPE
+         */
+
+        const jobType =
+          filters.jobType
+            .trim()
+            .toLowerCase();
+
+        if (
+          jobType &&
+          !job.type
+            .toLowerCase()
+            .includes(jobType)
+        ) {
+          return false;
+        }
+
+        /*
+         * SOURCE
+         */
+
+        const source =
+          filters.source
+            .trim()
+            .toLowerCase();
+
+        if (source) {
+          const sourceText = [
+            job.source,
+            job.sourceLabel,
+          ]
+            .join(' ')
+            .toLowerCase();
+
+          if (
+            !sourceText.includes(
+              source
+            )
+          ) {
+            return false;
+          }
+        }
+
+        /*
+         * MINIMUM MATCH SCORE
+         */
+
+        if (
+          filters.minimumMatchScore >
+          0
+        ) {
+          const matchScore =
+            job.matchScore ?? 0;
+
+          if (
+            matchScore <
+            filters.minimumMatchScore
+          ) {
+            return false;
+          }
+        }
+
+        return true;
+      }
+    );
+
   const job =
     feedJobs[0];
+
+  const hasUnseenJobs =
+    unseenJobs.length > 0;
+
+  /*
+   * CLEAR FILTERS
+   */
+
+  function clearFilters() {
+    setFilters({
+      ...defaultJobFilters,
+    });
+  }
 
   /*
    * LOAD APP DATA
@@ -197,7 +351,7 @@ export default function App() {
   ]);
 
   /*
-   * SAVE SEEN IDS
+   * SAVE SEEN JOB IDS
    */
 
   useEffect(() => {
@@ -264,7 +418,7 @@ export default function App() {
   }
 
   /*
-   * MARK JOB SEEN
+   * MARK JOB AS SEEN
    */
 
   function markJobAsSeen(
@@ -425,7 +579,12 @@ export default function App() {
   /*
    * RESTART DISCOVER FEED
    *
-   * Matches and Applications remain saved.
+   * Important:
+   * - Clears seen IDs
+   * - Clears Discover filters
+   * - Preserves Matches
+   * - Preserves Applications
+   * - Preserves Profile preferences
    */
 
   async function restartFeed() {
@@ -445,13 +604,25 @@ export default function App() {
 
       setSeenJobIds([]);
 
+      /*
+       * Prevent filters from immediately
+       * hiding the restarted feed.
+       */
+
+      setFilters({
+        ...defaultJobFilters,
+      });
+
       setAvailableJobs(
         scoredJobs
       );
 
       setSelectedJob(null);
       setDetailsOrigin(null);
-      setActiveTab('discover');
+
+      setActiveTab(
+        'discover'
+      );
 
       console.log(
         'Discover feed restarted.'
@@ -508,8 +679,12 @@ export default function App() {
 
   if (selectedJob) {
     return (
-      <View style={styles.app}>
-        <View style={styles.content}>
+      <View
+        style={styles.app}
+      >
+        <View
+          style={styles.content}
+        >
           <JobDetailsScreen
             job={selectedJob}
             onBack={
@@ -519,7 +694,9 @@ export default function App() {
         </View>
 
         <BottomNav
-          activeTab={activeTab}
+          activeTab={
+            activeTab
+          }
           onTabChange={(tab) => {
             setSelectedJob(null);
             setDetailsOrigin(null);
@@ -535,53 +712,65 @@ export default function App() {
    */
 
   return (
-    <View style={styles.app}>
-      <View style={styles.content}>
+    <View
+      style={styles.app}
+    >
+      <View
+        style={styles.content}
+      >
         {activeTab ===
           'discover' && (
-          <>
-            {job ? (
-              <JobFeedScreen
-                job={job}
-                interestedCount={
-                  interestedJobs.length
-                }
-                onInterested={
-                  handleInterested
-                }
-                onSkipped={
-                  handleSkipped
-                }
-                onViewInterested={() => {
-                  setActiveTab(
-                    'matches'
-                  );
-                }}
-                onViewDetails={
-                  openJobDetailsFromFeed
-                }
-                onViewApplications={() => {
-                  setActiveTab(
-                    'applications'
-                  );
-                }}
-              />
-            ) : (
-              <NoMoreJobsScreen
-                interestedCount={
-                  interestedJobs.length
-                }
-                onViewInterested={() => {
-                  setActiveTab(
-                    'matches'
-                  );
-                }}
-                onRestartFeed={
-                  restartFeed
-                }
-              />
-            )}
-          </>
+          <JobFeedScreen
+            job={job}
+
+            interestedCount={
+              interestedJobs.length
+            }
+
+            filters={
+              filters
+            }
+
+            hasUnseenJobs={
+              hasUnseenJobs
+            }
+
+            onFiltersChange={
+              setFilters
+            }
+
+            onClearFilters={
+              clearFilters
+            }
+
+            onInterested={
+              handleInterested
+            }
+
+            onSkipped={
+              handleSkipped
+            }
+
+            onViewInterested={() => {
+              setActiveTab(
+                'matches'
+              );
+            }}
+
+            onViewDetails={
+              openJobDetailsFromFeed
+            }
+
+            onViewApplications={() => {
+              setActiveTab(
+                'applications'
+              );
+            }}
+
+            onRestartFeed={
+              restartFeed
+            }
+          />
         )}
 
         {activeTab ===
@@ -590,14 +779,17 @@ export default function App() {
             interestedJobs={
               interestedJobs
             }
+
             onBack={() => {
               setActiveTab(
                 'discover'
               );
             }}
+
             onViewDetails={
               openJobDetailsFromInterested
             }
+
             onStatusChange={
               handleStatusChange
             }
@@ -610,6 +802,7 @@ export default function App() {
             jobs={
               interestedJobs
             }
+
             onBack={() => {
               setActiveTab(
                 'discover'
@@ -629,7 +822,10 @@ export default function App() {
       </View>
 
       <BottomNav
-        activeTab={activeTab}
+        activeTab={
+          activeTab
+        }
+
         onTabChange={
           setActiveTab
         }
@@ -653,7 +849,8 @@ const styles =
     loadingContainer: {
       flex: 1,
       alignItems: 'center',
-      justifyContent: 'center',
+      justifyContent:
+        'center',
       gap: 12,
       backgroundColor:
         '#080D1A',
