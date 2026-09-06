@@ -15,48 +15,32 @@ import {
 
 export type TailoredResumeExperience = {
   id: string;
-
   role: string;
-
   company: string;
-
   description: string;
-
   relevanceScore: number;
 };
 
 export type TailoredResumeProject = {
   id: string;
-
   name: string;
-
   description: string;
-
   technologies: string[];
-
   relevanceScore: number;
 };
 
 export type TailoredResumeDraft = {
   name: string;
-
   targetRole: string;
-
   headline: string;
-
   summary: string;
-
   skills: string[];
-
   experience:
     TailoredResumeExperience[];
-
   projects:
     TailoredResumeProject[];
-
   education:
     ResumeEducation[];
-
   warnings: string[];
 };
 
@@ -158,32 +142,25 @@ function getExperienceScore(
 
 function buildHeadline(
   job: Job,
-  resume: ResumeProfile,
-  matchedSkills: string[]
+  resume: ResumeProfile
 ) {
   /*
-   * Preserve the user's existing
-   * professional identity where
-   * possible.
+   * Keep the user's professional
+   * headline exactly as written.
+   *
+   * Matching skills are already
+   * prioritized in the Skills section,
+   * so repeating them here makes the
+   * resume look keyword-stuffed.
    */
 
-  const base =
-    resume.headline.trim() ||
-    `${job.title} Candidate`;
-
-  const topSkills =
-    matchedSkills
-      .slice(0, 3);
-
   if (
-    topSkills.length === 0
+    resume.headline.trim()
   ) {
-    return base;
+    return resume.headline.trim();
   }
 
-  return `${base} | ${topSkills.join(
-    ' | '
-  )}`;
+  return `${job.title} Candidate`;
 }
 
 function buildSummary(
@@ -192,28 +169,36 @@ function buildSummary(
   matchedSkills: string[]
 ) {
   /*
-   * We deliberately preserve the
-   * user's own summary rather than
-   * inventing achievements.
+   * The user's own summary is always
+   * preferred because it is factual
+   * information they explicitly saved.
    */
 
-  if (resume.summary.trim()) {
+  if (
+    resume.summary.trim()
+  ) {
     return resume.summary.trim();
   }
 
   if (
     matchedSkills.length > 0
   ) {
-    return (
-      `Candidate targeting ${job.title} roles ` +
-      `with Resume Profile evidence in ${matchedSkills
+    const skills =
+      matchedSkills
         .slice(0, 4)
-        .join(', ')}.`
+        .join(', ');
+
+    return (
+      `Early-career software developer ` +
+      `interested in ${job.title} opportunities, ` +
+      `with hands-on experience using ${skills}.`
     );
   }
 
   return (
-    `Candidate targeting ${job.title} opportunities.`
+    `Early-career software developer ` +
+    `interested in ${job.title} opportunities ` +
+    `and continued professional growth.`
   );
 }
 
@@ -231,8 +216,8 @@ export function generateTailoredResumeDraft(
    * SKILLS
    *
    * Matching skills go first.
-   * Remaining real resume skills
-   * stay afterward.
+   * All remaining skills still come
+   * directly from the Resume Profile.
    */
 
   const matchedNormalized =
@@ -266,8 +251,9 @@ export function generateTailoredResumeDraft(
   /*
    * PROJECTS
    *
-   * Keep original content.
-   * Only change display order.
+   * Preserve all factual content.
+   * Only change display order based
+   * on relevance to the job.
    */
 
   const projects =
@@ -302,9 +288,8 @@ export function generateTailoredResumeDraft(
   /*
    * EXPERIENCE
    *
-   * Same rule:
-   * preserve factual content and
-   * only prioritize relevant items.
+   * Preserve factual content and
+   * prioritize relevant entries.
    */
 
   const experience =
@@ -337,9 +322,11 @@ export function generateTailoredResumeDraft(
   const warnings: string[] =
     [];
 
-  if (!resume.name.trim()) {
+  if (
+    !resume.name.trim()
+  ) {
     warnings.push(
-      'Add your name to Resume Profile before using this draft.'
+      'Add your name before using this draft.'
     );
   }
 
@@ -347,7 +334,7 @@ export function generateTailoredResumeDraft(
     resume.skills.length === 0
   ) {
     warnings.push(
-      'No skills are currently saved in Resume Profile.'
+      'Add your verified technical skills before using this draft.'
     );
   }
 
@@ -364,7 +351,7 @@ export function generateTailoredResumeDraft(
     0
   ) {
     warnings.push(
-      `Not added to this resume because your Resume Profile does not currently support them: ${match.missingSkills
+      `These job-related skills were not added because they are not supported by your saved experience: ${match.missingSkills
         .slice(0, 6)
         .join(', ')}.`
     );
@@ -384,8 +371,7 @@ export function generateTailoredResumeDraft(
     headline:
       buildHeadline(
         job,
-        resume,
-        match.matchedSkills
+        resume
       ),
 
     summary:
