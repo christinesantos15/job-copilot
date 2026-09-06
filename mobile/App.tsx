@@ -62,6 +62,9 @@ import ProfileScreen from './src/screens/ProfileScreen';
 import ResumeProfileScreen
   from './src/screens/ResumeProfileScreen';
 
+import PrepareApplicationScreen
+  from './src/screens/PrepareApplicationScreen';
+
 type DetailsOrigin =
   | 'feed'
   | 'interested'
@@ -145,6 +148,11 @@ export default function App() {
   ] = useState<Job | null>(
     null
   );
+
+  const [
+    isPreparingApplication,
+    setIsPreparingApplication,
+  ] = useState(false);
 
   const [
     detailsOrigin,
@@ -758,6 +766,10 @@ export default function App() {
         )
     );
 
+    setIsPreparingApplication(
+      false
+    );
+
     setSelectedJob(
       null
     );
@@ -849,6 +861,10 @@ export default function App() {
     const origin =
       detailsOrigin;
 
+    setIsPreparingApplication(
+      false
+    );
+
     setSelectedJob(
       null
     );
@@ -917,6 +933,10 @@ export default function App() {
         defaultJobFilters
       );
 
+      setIsPreparingApplication(
+        false
+      );
+
       setSelectedJob(
         null
       );
@@ -978,6 +998,63 @@ export default function App() {
           selectedJob.id
       );
 
+    if (
+      isPreparingApplication
+    ) {
+      return (
+        <View
+          style={
+            styles.app
+          }
+        >
+          <View
+            style={
+              styles.content
+            }
+          >
+            <PrepareApplicationScreen
+              job={
+                selectedJob
+              }
+              preferences={
+                preferences
+              }
+              onBack={() =>
+                setIsPreparingApplication(
+                  false
+                )
+              }
+            />
+          </View>
+
+          <BottomNav
+            activeTab={
+              activeTab
+            }
+            onTabChange={(
+              tab
+            ) => {
+              setIsPreparingApplication(
+                false
+              );
+
+              setSelectedJob(
+                null
+              );
+
+              setDetailsOrigin(
+                null
+              );
+
+              setActiveTab(
+                tab
+              );
+            }}
+          />
+        </View>
+      );
+    }
+
     return (
       <View
         style={
@@ -998,6 +1075,11 @@ export default function App() {
             }
             onBack={
               closeJobDetails
+            }
+            onPrepareApplication={() =>
+              setIsPreparingApplication(
+                true
+              )
             }
             onNotesChange={
               isSavedJob
@@ -1029,6 +1111,10 @@ export default function App() {
           onTabChange={(
             tab
           ) => {
+            setIsPreparingApplication(
+              false
+            );
+
             setSelectedJob(
               null
             );

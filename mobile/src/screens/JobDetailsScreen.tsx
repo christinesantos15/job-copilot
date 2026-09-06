@@ -23,29 +23,6 @@ import {
   Job,
 } from '../types/Job';
 
-import ApplicationCopilotCard
-from '../components/ApplicationCopilotCard';
-
-import {
-  ResumeProfile,
-  defaultResumeProfile,
-} from '../profile/resumeProfile';
-
-import {
-  loadResumeProfile,
-} from '../storage/resumeProfileStorage';
-
-import ResumeMatchCard
-  from '../components/ResumeMatchCard';
-
-import ApplicationReadinessCard
-  from '../components/ApplicationReadinessCard';
-
-import ResumeTailoringCard
-  from '../components/ResumeTailoringCard';
-
-import TailoredResumeDraftCard
-  from '../components/TailoredResumeDraftCard';
 
 type TrackingUpdates =
   Partial<
@@ -82,6 +59,8 @@ type JobDetailsScreenProps = {
   onRemoveSavedJob?: (
     jobId: string
   ) => void;
+
+  onPrepareApplication: () => void;
 };
 
 const applicationStatuses: {
@@ -123,24 +102,14 @@ function formatStatus(
 
 export default function JobDetailsScreen({
   job,
-  preferences,
   onBack,
   onNotesChange,
   onTrackingChange,
   onStatusChange,
   onRemoveSavedJob,
+  onPrepareApplication,
 }: JobDetailsScreenProps) {
-  const [
-    resumeProfile,
-    setResumeProfile,
-  ] = useState<ResumeProfile>(
-    defaultResumeProfile
-  );
 
-  const [
-    hasLoadedResume,
-    setHasLoadedResume,
-  ] = useState(false);
   const [
     notes,
     setNotes,
@@ -253,49 +222,6 @@ export default function JobDetailsScreen({
     job.interviewDate,
     job.followUpDate,
   ]);
-
-  /*
-   * LOAD RESUME PROFILE
-   * FOR APPLICATION COPILOT
-   */
-
-  useEffect(() => {
-    let isMounted = true;
-
-    async function loadResume() {
-      try {
-        const savedResume =
-          await loadResumeProfile();
-
-        if (isMounted) {
-          setResumeProfile(
-            savedResume
-          );
-        }
-      } catch (error) {
-        console.error(
-          'Failed to load Resume Profile for Application Copilot:',
-          error
-        );
-      } finally {
-        if (isMounted) {
-          setHasLoadedResume(
-            true
-          );
-        }
-      }
-    }
-
-    setHasLoadedResume(
-      false
-    );
-
-    loadResume();
-
-    return () => {
-      isMounted = false;
-    };
-  }, [job.id]);
 
   const currentStatus =
     job.applicationStatus ??
@@ -865,61 +791,59 @@ export default function JobDetailsScreen({
           </View>
         )}
 
-      {/* APPLICATION COPILOT */}
+      {/* PREPARE APPLICATION */}
 
-      {/* RESUME MATCH + APPLICATION COPILOT */}
-
-      {hasLoadedResume ? (
-        <>
-        <ApplicationReadinessCard
-            job={job}
-            resume={
-              resumeProfile
-            }
-          />
-
-        <ResumeMatchCard
-            job={job}
-            resume={
-              resumeProfile
-            }
-          />
-
-        <ResumeTailoringCard
-            job={job}
-            resume={resumeProfile}
-          />
-
-        <TailoredResumeDraftCard
-            job={job}
-            resume={resumeProfile}
-          />
-
-        <ApplicationCopilotCard
-            job={job}
-            preferences={
-              preferences
-            }
-            resume={
-              resumeProfile
-            }
-          />
-        </>
-      ) : (
-        <View
+      <View
+        style={
+          styles.prepareCard
+        }
+      >
+        <Text
           style={
-            styles.copilotLoadingCard
+            styles.prepareTitle
+          }
+        >
+          Ready to prepare your application?
+        </Text>
+
+        <Text
+          style={
+            styles.prepareDescription
+          }
+        >
+          Review resume fit, tailoring,
+          application readiness and your
+          job-specific resume draft.
+        </Text>
+
+        <Pressable
+          style={({ pressed }) => [
+            styles.prepareButton,
+
+            pressed &&
+              styles.buttonPressed,
+          ]}
+          onPress={
+            onPrepareApplication
           }
         >
           <Text
             style={
-              styles.copilotLoadingText
+              styles.prepareButtonText
             }
           >
-            Loading Resume Profile...
+            Prepare Application
           </Text>
-        </View>
-      )}
+
+          <Text
+            style={
+              styles.prepareButtonArrow
+            }
+          >
+            →
+          </Text>
+        </Pressable>
+      </View>
 
       {/* APPLICATION TIMELINE */}
 
@@ -1559,32 +1483,6 @@ const styles =
     },
 
     /*
-     * APPLICATION COPILOT
-     */
-
-    copilotLoadingCard: {
-      backgroundColor:
-        '#111727',
-
-      borderWidth: 1,
-
-      borderColor:
-        '#47377A',
-
-      borderRadius: 18,
-
-      padding: 17,
-
-      marginBottom: 15,
-    },
-
-    copilotLoadingText: {
-      color: '#7F879B',
-
-      fontSize: 11,
-    },
-
-    /*
      * STATUS
      */
 
@@ -1831,4 +1729,73 @@ const styles =
       fontSize: 11,
       fontWeight: '900',
     },
+    prepareCard: {
+  backgroundColor:
+    '#151225',
+
+  borderWidth: 1,
+
+  borderColor:
+    '#47377A',
+
+  borderRadius: 18,
+
+  padding: 17,
+
+  marginBottom: 15,
+},
+
+prepareTitle: {
+  color: '#FFFFFF',
+
+  fontSize: 16,
+
+  fontWeight: '900',
+},
+
+prepareDescription: {
+  color: '#858DA1',
+
+  fontSize: 11,
+
+  lineHeight: 17,
+
+  marginTop: 6,
+},
+
+prepareButton: {
+  flexDirection: 'row',
+
+  alignItems: 'center',
+
+  justifyContent:
+    'space-between',
+
+  backgroundColor:
+    '#7657E8',
+
+  borderRadius: 11,
+
+  paddingHorizontal: 14,
+
+  paddingVertical: 13,
+
+  marginTop: 14,
+},
+
+prepareButtonText: {
+  color: '#FFFFFF',
+
+  fontSize: 11,
+
+  fontWeight: '900',
+},
+
+prepareButtonArrow: {
+  color: '#FFFFFF',
+
+  fontSize: 17,
+
+  fontWeight: '900',
+},
   });
