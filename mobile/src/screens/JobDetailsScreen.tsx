@@ -4,6 +4,10 @@ import {
 } from 'react';
 
 import {
+  JobProfile,
+} from '../profile/jobProfile';
+
+import {
   Alert,
   Linking,
   Pressable,
@@ -35,6 +39,8 @@ type TrackingUpdates =
 
 type JobDetailsScreenProps = {
   job: Job;
+
+  preferences: JobProfile;
 
   onBack: () => void;
 
@@ -97,6 +103,7 @@ function formatStatus(
 
 export default function JobDetailsScreen({
   job,
+  preferences,
   onBack,
   onNotesChange,
   onTrackingChange,
@@ -787,6 +794,7 @@ export default function JobDetailsScreen({
       {/* APPLICATION COPILOT */}
       <ApplicationCopilotCard
         job={job}
+        profile={preferences}
       />
 
       {/* APPLICATION TIMELINE */}

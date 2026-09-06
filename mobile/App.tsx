@@ -985,6 +985,9 @@ export default function App() {
             job={
               selectedJob
             }
+            preferences={
+              preferences
+            }
             onBack={
               closeJobDetails
             }

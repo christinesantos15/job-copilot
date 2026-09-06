@@ -1,5 +1,9 @@
 import { Job } from '../types/Job';
 
+import {
+  JobProfile,
+} from '../profile/jobProfile';
+
 export type ApplicationCopilotResult = {
   strengths: string[];
   gaps: string[];
@@ -7,26 +11,9 @@ export type ApplicationCopilotResult = {
   checklist: string[];
 };
 
-const profileSkills = [
-  'react',
-  'react native',
-  'next.js',
-  'nextjs',
-  'typescript',
-  'javascript',
-  'python',
-  'fastapi',
-  'postgresql',
-  'sql',
-  'rest api',
-  'docker',
-  'git',
-  'html',
-  'css',
-  'figma',
-];
-
-function normalize(value?: string) {
+function normalize(
+  value?: string
+) {
   return (value ?? '')
     .toLowerCase()
     .replace(/\s+/g, ' ')
@@ -38,26 +25,56 @@ function hasSkill(
   skill: string
 ) {
   return text.includes(
-    skill.toLowerCase()
+    normalize(skill)
+  );
+}
+
+function includesAny(
+  text: string,
+  values: string[]
+) {
+  return values.some(
+    (value) =>
+      text.includes(
+        normalize(value)
+      )
   );
 }
 
 export function generateApplicationCopilot(
-  job: Job
+  job: Job,
+  profile: JobProfile
 ): ApplicationCopilotResult {
   const strengths: string[] = [];
   const gaps: string[] = [];
 
-  const jobText = normalize(
-    [
-      job.title,
-      job.description,
-      ...(job.skills ?? []),
-    ].join(' ')
-  );
+  /*
+   * NORMALIZED PROFILE
+   */
+
+  const profileSkills =
+    profile.preferredSkills.map(
+      (skill) =>
+        normalize(skill)
+    );
+
+  const jobTitle =
+    normalize(job.title);
+
+  const jobLocation =
+    normalize(job.location);
+
+  const jobText =
+    normalize(
+      [
+        job.title,
+        job.description,
+        ...(job.skills ?? []),
+      ].join(' ')
+    );
 
   /*
-   * MATCH STRENGTHS
+   * OVERALL MATCH
    */
 
   if (
@@ -74,33 +91,93 @@ export function generateApplicationCopilot(
     strengths.push(
       `Your profile has a solid ${job.matchScore}% match with this role.`
     );
-  }
-
-  if (
-    normalize(job.location).includes(
-      'singapore'
-    )
+  } else if (
+    job.matchScore !== undefined
   ) {
     strengths.push(
-      'Location aligns with your Singapore job search.'
+      `Current profile match: ${job.matchScore}%. Focus on the strongest matching requirements when applying.`
     );
   }
 
+  /*
+   * LOCATION MATCH
+   */
+
+  const matchedLocation =
+    profile.preferredLocations.find(
+      (location) =>
+        jobLocation.includes(
+          normalize(location)
+        )
+    );
+
+  if (matchedLocation) {
+    strengths.push(
+      `${job.location} aligns with your preferred location.`
+    );
+  }
+
+  /*
+   * TARGET ROLE MATCH
+   */
+
+  const matchedRole =
+    profile.targetRoles.find(
+      (role) =>
+        jobTitle.includes(
+          normalize(role)
+        )
+    );
+
+  if (matchedRole) {
+    strengths.push(
+      `The role aligns with your ${matchedRole} target.`
+    );
+  }
+
+  /*
+   * LEVEL MATCH
+   */
+
+  const matchedLevel =
+    profile.preferredLevels.find(
+      (level) =>
+        jobTitle.includes(
+          normalize(level)
+        )
+    );
+
+  if (matchedLevel) {
+    strengths.push(
+      `The ${matchedLevel} level aligns with your preferred experience level.`
+    );
+  }
+
+  /*
+   * SKILL MATCHES
+   */
+
   const matchedSkills =
-    profileSkills.filter((skill) =>
-      hasSkill(jobText, skill)
+    profileSkills.filter(
+      (skill) =>
+        hasSkill(
+          jobText,
+          skill
+        )
     );
 
   matchedSkills
     .slice(0, 5)
-    .forEach((skill) => {
-      strengths.push(
-        `${skill} appears relevant to this role.`
-      );
-    });
+    .forEach(
+      (skill) => {
+        strengths.push(
+          `${skill} appears relevant to this role.`
+        );
+      }
+    );
 
   /*
-   * EXISTING MATCHER REASONS
+   * EXISTING MATCH REASONS
    */
 
   for (
@@ -113,38 +190,53 @@ export function generateApplicationCopilot(
       break;
     }
 
-    if (
-      !strengths.some(
+    const alreadyExists =
+      strengths.some(
         (item) =>
           normalize(item) ===
           normalize(reason)
-      )
-    ) {
+      );
+
+    if (!alreadyExists) {
       strengths.push(reason);
     }
   }
 
-  if (strengths.length === 0) {
+  if (
+    strengths.length === 0
+  ) {
     strengths.push(
-      'Your background has some transferable skills worth highlighting.'
+      'Your background has transferable skills worth highlighting for this role.'
     );
   }
 
   /*
-   * SKILL GAPS
+   * POSSIBLE TECHNOLOGIES
    *
-   * For V1 we only flag technologies
-   * clearly present in the listing that
-   * are outside the current known
-   * profile skill set.
+   * These are technologies we know
+   * how to detect from listings.
+   *
+   * A technology is only treated as a
+   * gap when:
+   *
+   * 1. the listing mentions it
+   * 2. it is NOT in preferredSkills
    */
 
   const technologies = [
-    'aws',
-    'azure',
-    'gcp',
-    'kubernetes',
-    'terraform',
+    'react',
+    'react native',
+    'next.js',
+    'nextjs',
+    'typescript',
+    'javascript',
+    'node.js',
+    'nodejs',
+    'python',
+    'fastapi',
+    'django',
+    'flask',
+
     'java',
     'spring',
     'c++',
@@ -152,62 +244,205 @@ export function generateApplicationCopilot(
     'go',
     'golang',
     'rust',
+
     'swift',
     'kotlin',
     'flutter',
-    'django',
-    'flask',
+
+    'postgresql',
+    'mysql',
     'mongodb',
     'redis',
+    'sql',
+
     'graphql',
+    'rest api',
+
+    'docker',
+    'kubernetes',
+    'terraform',
+
+    'aws',
+    'azure',
+    'gcp',
+
+    'git',
+    'linux',
+    'ci/cd',
+
     'machine learning',
     'pytorch',
     'tensorflow',
+
+    'figma',
+    'html',
+    'css',
   ];
 
   const possibleGaps =
     technologies.filter(
-      (technology) =>
-        hasSkill(
-          jobText,
-          technology
-        ) &&
-        !profileSkills.includes(
-          technology
-        )
+      (technology) => {
+        const normalizedTechnology =
+          normalize(
+            technology
+          );
+
+        const listingRequires =
+          hasSkill(
+            jobText,
+            normalizedTechnology
+          );
+
+        const userHasSkill =
+          profileSkills.some(
+            (profileSkill) =>
+              profileSkill ===
+                normalizedTechnology ||
+              profileSkill.includes(
+                normalizedTechnology
+              ) ||
+              normalizedTechnology.includes(
+                profileSkill
+              )
+          );
+
+        return (
+          listingRequires &&
+          !userHasSkill
+        );
+      }
     );
 
-  possibleGaps
-    .slice(0, 5)
-    .forEach((skill) => {
-      gaps.push(
-        `Review ${skill} before applying or interviewing.`
-      );
-    });
+  /*
+   * REMOVE DUPLICATE ALIASES
+   */
 
-  const seniorTerms = [
-    'senior',
-    'staff',
-    'principal',
-    'lead',
-    'manager',
-  ];
+  const uniqueGaps =
+    possibleGaps.filter(
+      (
+        technology,
+        index,
+        array
+      ) => {
+        const aliases: Record<
+          string,
+          string[]
+        > = {
+          'next.js': [
+            'next.js',
+            'nextjs',
+          ],
+
+          'node.js': [
+            'node.js',
+            'nodejs',
+          ],
+
+          go: [
+            'go',
+            'golang',
+          ],
+        };
+
+        const canonical =
+          Object.entries(
+            aliases
+          ).find(
+            ([, values]) =>
+              values.includes(
+                technology
+              )
+          )?.[0] ??
+          technology;
+
+        return (
+          array.findIndex(
+            (candidate) => {
+              const candidateCanonical =
+                Object.entries(
+                  aliases
+                ).find(
+                  ([, values]) =>
+                    values.includes(
+                      candidate
+                    )
+                )?.[0] ??
+                candidate;
+
+              return (
+                candidateCanonical ===
+                canonical
+              );
+            }
+          ) === index
+        );
+      }
+    );
+
+  uniqueGaps
+    .slice(0, 5)
+    .forEach(
+      (skill) => {
+        gaps.push(
+          `Review ${skill} before applying or interviewing.`
+        );
+      }
+    );
+
+  /*
+   * SENIORITY WARNING
+   */
+
+  const seniorTerms =
+    profile.seniorLevels.length >
+    0
+      ? profile.seniorLevels
+      : [
+          'senior',
+          'staff',
+          'principal',
+          'lead',
+          'manager',
+        ];
 
   if (
-    seniorTerms.some((term) =>
-      normalize(job.title).includes(
-        term
-      )
+    includesAny(
+      jobTitle,
+      seniorTerms
     )
   ) {
     gaps.push(
-      'This role may expect more senior-level experience.'
+      'This role may expect more senior-level experience than your current target.'
     );
   }
 
-  if (gaps.length === 0) {
+  /*
+   * SPECIALIZATION WARNING
+   */
+
+  const unrelatedSpecialization =
+    profile.unrelatedSpecializations.find(
+      (specialization) =>
+        jobText.includes(
+          normalize(
+            specialization
+          )
+        )
+    );
+
+  if (
+    unrelatedSpecialization
+  ) {
     gaps.push(
-      'No obvious technical gap detected from the available listing data.'
+      `This role includes ${unrelatedSpecialization}, which is outside your current target specialization.`
+    );
+  }
+
+  if (
+    gaps.length === 0
+  ) {
+    gaps.push(
+      'No obvious technical gap detected from the available listing data and your current profile.'
     );
   }
 
@@ -218,7 +453,9 @@ export function generateApplicationCopilot(
   const interviewQuestions: string[] =
     [
       `Why are you interested in the ${job.title} role at ${job.company}?`,
+
       'Tell me about a project that best demonstrates your software development skills.',
+
       'Describe a technical problem you struggled with and how you solved it.',
     ];
 
@@ -247,11 +484,31 @@ export function generateApplicationCopilot(
 
   if (
     matchedSkills.includes(
+      'javascript'
+    )
+  ) {
+    interviewQuestions.push(
+      'Explain an important JavaScript concept you have used in one of your projects.'
+    );
+  }
+
+  if (
+    matchedSkills.includes(
       'python'
     )
   ) {
     interviewQuestions.push(
       'Walk me through a Python project you built and the technical decisions you made.'
+    );
+  }
+
+  if (
+    matchedSkills.includes(
+      'fastapi'
+    )
+  ) {
+    interviewQuestions.push(
+      'How would you structure a FastAPI backend and handle validation or errors?'
     );
   }
 
@@ -270,21 +527,63 @@ export function generateApplicationCopilot(
 
   if (
     matchedSkills.includes(
+      'docker'
+    )
+  ) {
+    interviewQuestions.push(
+      'How have you used Docker in development or deployment?'
+    );
+  }
+
+  if (
+    matchedSkills.includes(
       'rest api'
     ) ||
-    jobText.includes('api')
+    jobText.includes(
+      'api'
+    )
   ) {
     interviewQuestions.push(
       'Explain how you would design and consume a REST API.'
     );
   }
 
+  /*
+   * CHECKLIST
+   */
+
+  const checklist = [
+    'Read the full job description again.',
+
+    'Tailor your resume to the strongest matching requirements.',
+
+    'Choose 2–3 projects or experiences you can explain clearly.',
+
+    `Research ${job.company} and its products.`,
+
+    'Prepare answers for the interview questions above.',
+
+    'Review the gaps identified by Application Copilot.',
+
+    'Open the original listing and verify it is still active.',
+
+    'Apply and update the application status in Job Copilot.',
+
+    'Set a follow-up date after applying.',
+  ];
+
   return {
     strengths:
-      strengths.slice(0, 6),
+      strengths.slice(
+        0,
+        7
+      ),
 
     gaps:
-      gaps.slice(0, 5),
+      gaps.slice(
+        0,
+        5
+      ),
 
     interviewQuestions:
       interviewQuestions.slice(
@@ -292,15 +591,6 @@ export function generateApplicationCopilot(
         6
       ),
 
-    checklist: [
-      'Read the full job description again.',
-      'Tailor your resume to the strongest matching requirements.',
-      'Choose 2–3 projects or experiences you can explain clearly.',
-      `Research ${job.company} and its products.`,
-      'Prepare answers for the interview questions above.',
-      'Open the original listing and verify it is still active.',
-      'Apply and update the application status in Job Copilot.',
-      'Set a follow-up date after applying.',
-    ],
+    checklist,
   };
 }
