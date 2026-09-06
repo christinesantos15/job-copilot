@@ -1,6 +1,9 @@
 import { Job } from '../types/Job';
 
 export type JobSource = {
-  name: string;
+  id: string;
+
+  label: string;
+
   fetchJobs: () => Promise<Job[]>;
 };

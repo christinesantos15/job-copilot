@@ -1,273 +1,496 @@
-import { Job } from '../types/Job';
-import { JobSource } from './jobSource';
+import {
+  Job,
+} from '../types/Job';
+
+import {
+  JobSource,
+} from './jobSource';
+
+/*
+ * LEVER
+ *
+ * Public published-job endpoint:
+ *
+ * https://api.lever.co/v0/postings/{site}?mode=json
+ *
+ * Each company has its own
+ * Lever site identifier.
+ */
+
+type LeverCategory = {
+  location?: string;
+  commitment?: string;
+  team?: string;
+  department?: string;
+  allLocations?: string[];
+};
+
+type LeverSalaryRange = {
+  currency?: string;
+  interval?: string;
+  min?: number;
+  max?: number;
+};
 
 type LeverPosting = {
   id: string;
-  text: string;
-  hostedUrl: string;
-  applyUrl: string;
 
-  categories: {
-    location?: string;
-    commitment?: string;
-    team?: string;
-  };
+  text: string;
+
+  categories?: LeverCategory;
+
+  country?: string | null;
+
+  openingPlain?: string;
 
   descriptionPlain?: string;
-  createdAt?: number;
+
+  descriptionBodyPlain?: string;
+
+  additionalPlain?: string;
+
+  hostedUrl?: string;
+
+  applyUrl?: string;
+
+  workplaceType?:
+    | 'unspecified'
+    | 'on-site'
+    | 'remote'
+    | 'hybrid';
+
+  salaryRange?: LeverSalaryRange;
+
+  salaryDescriptionPlain?: string;
+
+  lists?: {
+    text?: string;
+    content?: string;
+  }[];
 };
 
 type LeverCompany = {
   site: string;
-  name: string;
+
+  company: string;
+
+  /*
+   * Optional filter.
+   *
+   * We only want Singapore jobs
+   * for Job Copilot V1.
+   */
+
+  locationKeywords?: string[];
 };
 
-const LEVER_COMPANIES: LeverCompany[] = [
-  {
-    site: 'csit',
-    name: 'CSIT',
-  },
-  {
-    site: 'kpler',
-    name: 'Kpler',
-  },
-  {
-    site: 'GoToGroup',
-    name: 'GoTo Group',
-  },
+/*
+ * LIVE LEVER SOURCES
+ *
+ * Add more companies here later.
+ *
+ * CSIT currently publishes
+ * Singapore software roles on
+ * Lever.
+ */
+
+const leverCompanies:
+  LeverCompany[] = [
+    {
+      site: 'csit',
+
+      company:
+        'Centre for Strategic Infocomm Technologies',
+
+      locationKeywords: [
+        'singapore',
+      ],
+    },
+  ];
+
+/*
+ * BASIC TECH SKILL EXTRACTION
+ *
+ * This is intentionally local
+ * and deterministic.
+ *
+ * Later the backend can perform
+ * stronger parsing.
+ */
+
+const knownSkills = [
+  'React',
+  'React Native',
+  'Next.js',
+  'TypeScript',
+  'JavaScript',
+  'Node.js',
+  'Python',
+  'Java',
+  'C++',
+  'C#',
+  'Go',
+  'Rust',
+  'Swift',
+  'Kotlin',
+  'Flutter',
+  'FastAPI',
+  'Django',
+  'Flask',
+  'Spring',
+  'PostgreSQL',
+  'MySQL',
+  'MongoDB',
+  'Redis',
+  'SQL',
+  'GraphQL',
+  'REST API',
+  'Docker',
+  'Kubernetes',
+  'AWS',
+  'Azure',
+  'GCP',
+  'Git',
+  'Linux',
+  'Terraform',
+  'CI/CD',
+  'Figma',
+  'HTML',
+  'CSS',
 ];
 
-function isSingaporeJob(job: Job): boolean {
-  const location = job.location
-    .trim()
-    .toLowerCase();
-
-  return location.includes('singapore');
+function stripHtml(
+  value: string
+) {
+  return value
+    .replace(
+      /<[^>]*>/g,
+      ' '
+    )
+    .replace(
+      /&nbsp;/gi,
+      ' '
+    )
+    .replace(
+      /&amp;/gi,
+      '&'
+    )
+    .replace(
+      /&lt;/gi,
+      '<'
+    )
+    .replace(
+      /&gt;/gi,
+      '>'
+    )
+    .replace(
+      /&#39;/gi,
+      "'"
+    )
+    .replace(
+      /&quot;/gi,
+      '"'
+    )
+    .replace(
+      /\s+/g,
+      ' '
+    )
+    .trim();
 }
 
-function isRelevantJob(job: Job): boolean {
-  const searchableText = [
-    job.title,
-    job.description,
-  ]
-    .join(' ')
-    .toLowerCase();
+function extractSkills(
+  text: string
+) {
+  const lower =
+    text.toLowerCase();
 
-  const relevantKeywords = [
-    'software engineer',
-    'software developer',
-    'frontend',
-    'front end',
-    'backend',
-    'back end',
-    'full stack',
-    'fullstack',
-    'web developer',
-    'react',
-    'javascript',
-    'typescript',
-    'ui/ux',
-    'ui ux',
-    'product designer',
-    'software intern',
-    'engineering intern',
-    'developer intern',
-    'graduate engineer',
-    'junior developer',
-    'junior engineer',
-  ];
-
-  return relevantKeywords.some(
-    (keyword) =>
-      searchableText.includes(keyword)
+  return knownSkills.filter(
+    (skill) =>
+      lower.includes(
+        skill.toLowerCase()
+      )
   );
 }
 
-function isEarlyCareerJob(job: Job): boolean {
-  const title = job.title
-    .trim()
-    .toLowerCase();
-
-  const excludedKeywords = [
-    'senior',
-    'sr.',
-    'lead',
-    'staff',
-    'principal',
-    'manager',
-    'head of',
-    'director',
-    'vp',
-    'vice president',
-  ];
-
-  return !excludedKeywords.some(
-    (keyword) =>
-      title.includes(keyword)
-  );
-}
-
-function hasTooMuchExperienceRequired(
-  job: Job
-): boolean {
-  const text = [
-    job.title,
-    job.description,
-  ]
-    .join(' ')
-    .toLowerCase();
-
-  const experiencePatterns = [
-    /\b5\+?\s*years?\b/,
-    /\b6\+?\s*years?\b/,
-    /\b7\+?\s*years?\b/,
-    /\b8\+?\s*years?\b/,
-    /\b9\+?\s*years?\b/,
-    /\b10\+?\s*years?\b/,
-  ];
-
-  return experiencePatterns.some(
-    (pattern) =>
-      pattern.test(text)
-  );
-}
-
-function interleaveJobs(
-  jobGroups: Job[][]
-): Job[] {
-  const result: Job[] = [];
-
-  let index = 0;
-
-  while (true) {
-    let addedJob = false;
-
-    for (const group of jobGroups) {
-      if (index < group.length) {
-        result.push(group[index]);
-        addedJob = true;
-      }
-    }
-
-    if (!addedJob) {
-      break;
-    }
-
-    index++;
+function formatSalary(
+  posting: LeverPosting
+) {
+  if (
+    posting
+      .salaryDescriptionPlain
+  ) {
+    return stripHtml(
+      posting
+        .salaryDescriptionPlain
+    );
   }
 
-  return result;
+  const range =
+    posting.salaryRange;
+
+  if (
+    !range ||
+    range.min === undefined ||
+    range.max === undefined
+  ) {
+    return undefined;
+  }
+
+  const currency =
+    range.currency ?? '';
+
+  const interval =
+    range.interval
+      ? ` / ${range.interval}`
+      : '';
+
+  return `${currency} ${range.min.toLocaleString()} - ${range.max.toLocaleString()}${interval}`.trim();
 }
 
-async function fetchLeverSite(
+function matchesLocation(
+  posting: LeverPosting,
+  keywords?: string[]
+) {
+  if (
+    !keywords ||
+    keywords.length === 0
+  ) {
+    return true;
+  }
+
+  const locationText = [
+    posting.categories?.location ??
+      '',
+
+    ...(
+      posting.categories
+        ?.allLocations ?? []
+    ),
+
+    posting.country ?? '',
+  ]
+    .join(' ')
+    .toLowerCase();
+
+  return keywords.some(
+    (keyword) =>
+      locationText.includes(
+        keyword.toLowerCase()
+      )
+  );
+}
+
+function buildDescription(
+  posting: LeverPosting
+) {
+  const parts = [
+    posting.openingPlain,
+    posting.descriptionPlain,
+    posting.descriptionBodyPlain,
+    posting.additionalPlain,
+  ]
+    .filter(
+      (value):
+        value is string =>
+        Boolean(
+          value &&
+            value.trim()
+        )
+    )
+    .map(stripHtml);
+
+  const uniqueParts =
+    Array.from(
+      new Set(parts)
+    );
+
+  return (
+    uniqueParts.join('\n\n') ||
+    'View the original listing for full job details.'
+  );
+}
+
+function normalizeLeverJob(
+  posting: LeverPosting,
+  company: LeverCompany
+): Job {
+  const description =
+    buildDescription(
+      posting
+    );
+
+  const skillText = [
+    posting.text,
+    description,
+
+    ...(posting.lists ?? []).map(
+      (list) =>
+        `${list.text ?? ''} ${
+          list.content ?? ''
+        }`
+    ),
+  ].join(' ');
+
+  const location =
+    posting.categories
+      ?.location ||
+    posting.categories
+      ?.allLocations?.[0] ||
+    'Location not specified';
+
+  const commitment =
+    posting.categories
+      ?.commitment ||
+    'Not specified';
+
+  const workplace =
+    posting.workplaceType &&
+    posting.workplaceType !==
+      'unspecified'
+      ? posting.workplaceType
+      : '';
+
+  const type = workplace
+    ? `${commitment} • ${workplace}`
+    : commitment;
+
+  return {
+    /*
+     * Prefix IDs by source so
+     * IDs from different ATS
+     * providers cannot collide.
+     */
+
+    id: `lever:${company.site}:${posting.id}`,
+
+    title: posting.text,
+
+    company:
+      company.company,
+
+    location,
+
+    salary:
+      formatSalary(
+        posting
+      ),
+
+    type,
+
+    source: 'lever',
+
+    sourceLabel: 'Lever',
+
+    sourceUrl:
+      posting.hostedUrl ||
+      posting.applyUrl ||
+      `https://jobs.lever.co/${company.site}/${posting.id}`,
+
+    description,
+
+    skills:
+      extractSkills(
+        skillText
+      ),
+  };
+}
+
+async function fetchLeverCompany(
   company: LeverCompany
 ): Promise<Job[]> {
-  const { site, name } = company;
+  const url =
+    `https://api.lever.co/v0/postings/` +
+    `${company.site}` +
+    `?mode=json`;
 
-  const response = await fetch(
-    `https://api.lever.co/v0/postings/${site}?mode=json`
-  );
+  const response =
+    await fetch(url, {
+      headers: {
+        Accept:
+          'application/json',
+      },
+    });
 
   if (!response.ok) {
-    console.error(
-      `Lever request failed for ${site}:`,
-      response.status
+    throw new Error(
+      `Lever ${company.site} returned HTTP ${response.status}`
     );
-
-    return [];
   }
 
-  const postings: LeverPosting[] =
-    await response.json();
+  const data =
+    (await response.json()) as
+      LeverPosting[];
 
-  const normalizedJobs: Job[] =
-    postings.map((posting) => ({
-      id: `lever-${site}-${posting.id}`,
-
-      title: posting.text,
-
-      company: name,
-
-      location:
-        posting.categories.location ??
-        'Not specified',
-
-      type:
-        posting.categories.commitment ??
-        'Not specified',
-
-      source: 'company',
-
-      sourceLabel: 'Company Careers',
-
-      sourceUrl: posting.hostedUrl,
-
-      description:
-        posting.descriptionPlain ??
-        'No description available.',
-
-      postedDate: posting.createdAt
-        ? new Date(posting.createdAt)
-            .toISOString()
-            .split('T')[0]
-        : undefined,
-
-      skills: [],
-    }));
-
-  const singaporeJobs =
-    normalizedJobs.filter(
-      isSingaporeJob
+  if (
+    !Array.isArray(data)
+  ) {
+    throw new Error(
+      `Unexpected Lever response for ${company.site}`
     );
+  }
 
-  const relevantJobs =
-    singaporeJobs
-      .filter(isRelevantJob)
-      .filter(isEarlyCareerJob)
-      .filter(
-        (job) =>
-          !hasTooMuchExperienceRequired(
-            job
-          )
-      );
-
-  console.log(
-    `${name}: ${relevantJobs.length} relevant early-career Singapore jobs`
-  );
-
-  return relevantJobs;
-}
-
-export const leverSource: JobSource = {
-  name: 'Lever',
-
-  async fetchJobs(): Promise<Job[]> {
-    const results = await Promise.all(
-      LEVER_COMPANIES.map(
-        async (company) => {
-          try {
-            const jobs =
-              await fetchLeverSite(
-                company
-              );
-
-            console.log(
-              `Lever ${company.name}: loaded ${jobs.length} jobs`
-            );
-
-            return jobs;
-          } catch (error) {
-            console.error(
-              `Lever ${company.name} failed:`,
-              error
-            );
-
-            return [];
-          }
-        }
+  return data
+    .filter((posting) =>
+      matchesLocation(
+        posting,
+        company.locationKeywords
+      )
+    )
+    .map((posting) =>
+      normalizeLeverJob(
+        posting,
+        company
       )
     );
+}
 
-    return interleaveJobs(results);
-  },
-};
+export const leverSource:
+  JobSource = {
+    id: 'lever',
+
+    label: 'Lever',
+
+    async fetchJobs() {
+      const results =
+        await Promise.allSettled(
+          leverCompanies.map(
+            fetchLeverCompany
+          )
+        );
+
+      const jobs:
+        Job[] = [];
+
+      results.forEach(
+        (
+          result,
+          index
+        ) => {
+          const company =
+            leverCompanies[index];
+
+          if (
+            result.status ===
+            'fulfilled'
+          ) {
+            console.log(
+              `[Lever] ${company.company}: ${result.value.length} jobs`
+            );
+
+            jobs.push(
+              ...result.value
+            );
+          } else {
+            console.warn(
+              `[Lever] Failed ${company.company}:`,
+              result.reason
+            );
+          }
+        }
+      );
+
+      return jobs;
+    },
+  };
+
+export default leverSource;

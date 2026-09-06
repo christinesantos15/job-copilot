@@ -1,11 +1,13 @@
-import { Job } from '../types/Job';
 import { mockJobs } from '../data/mockJobs';
 import { JobSource } from './jobSource';
 
 export const mockSource: JobSource = {
-  name: 'Mock Source',
+  id: 'mock',
+  label: 'Mock Source',
 
-  async fetchJobs(): Promise<Job[]> {
+  async fetchJobs() {
     return mockJobs;
   },
 };
+
+export default mockSource;

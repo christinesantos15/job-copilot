@@ -1,98 +1,208 @@
-import { Job } from '../types/Job';
-import { JobSource } from './jobSource';
-import { mockSource } from './mockSource';
-import { leverSource } from './leverSource';
-import { addMatchScores } from '../matching/jobMatcher';
+import {
+  Job,
+} from '../types/Job';
 
-const sources: JobSource[] = [
-  mockSource,
+import {
+  JobSource,
+} from './jobSource';
+
+import {
   leverSource,
-];
+} from './leverSource';
 
-function createJobKey(job: Job): string {
+import {
+  greenhouseSource,
+} from './greenhouseSource';
+
+/*
+ * PRODUCTION SOURCES
+ *
+ * mockSource is intentionally
+ * NOT included here anymore.
+ */
+
+const jobSources:
+  JobSource[] = [
+    leverSource,
+    greenhouseSource,
+  ];
+
+/*
+ * NORMALIZE TEXT FOR
+ * DEDUPLICATION.
+ */
+
+function normalizeText(
+  value?: string
+) {
+  return (
+    value ?? ''
+  )
+    .toLowerCase()
+    .replace(
+      /[^a-z0-9]+/g,
+      ' '
+    )
+    .replace(
+      /\s+/g,
+      ' '
+    )
+    .trim();
+}
+
+/*
+ * Jobs can appear through
+ * multiple feeds.
+ *
+ * Primary identity remains the
+ * source-prefixed ID.
+ *
+ * For cross-source duplicates,
+ * compare:
+ *
+ * company + title + location
+ */
+
+function getDuplicateKey(
+  job: Job
+) {
   return [
-    job.title.trim().toLowerCase(),
-    job.company.trim().toLowerCase(),
-    job.location.trim().toLowerCase(),
+    normalizeText(
+      job.company
+    ),
+
+    normalizeText(
+      job.title
+    ),
+
+    normalizeText(
+      job.location
+    ),
   ].join('|');
 }
 
-function removeDuplicateJobs(
+function deduplicateJobs(
   jobs: Job[]
-): Job[] {
-  const seenJobs = new Set<string>();
+) {
+  const seenIds =
+    new Set<string>();
 
-  return jobs.filter((job) => {
-    const key = createJobKey(job);
+  const seenListings =
+    new Set<string>();
 
-    if (seenJobs.has(key)) {
-      return false;
+  const uniqueJobs:
+    Job[] = [];
+
+  for (
+    const job of jobs
+  ) {
+    if (
+      seenIds.has(
+        job.id
+      )
+    ) {
+      continue;
     }
 
-    seenJobs.add(key);
+    const duplicateKey =
+      getDuplicateKey(
+        job
+      );
 
-    return true;
-  });
-}
-
-function interleaveSources(
-  jobGroups: Job[][]
-): Job[] {
-  const result: Job[] = [];
-
-  let index = 0;
-
-  while (true) {
-    let addedJob = false;
-
-    for (const group of jobGroups) {
-      if (index < group.length) {
-        result.push(group[index]);
-        addedJob = true;
-      }
+    if (
+      seenListings.has(
+        duplicateKey
+      )
+    ) {
+      continue;
     }
 
-    if (!addedJob) {
-      break;
-    }
-
-    index++;
-  }
-
-  return result;
-}
-
-export async function fetchAllJobs(): Promise<Job[]> {
-  const results = await Promise.all(
-    sources.map(async (source) => {
-      try {
-        const jobs = await source.fetchJobs();
-
-        console.log(
-          `${source.name}: loaded ${jobs.length} jobs`
-        );
-
-        return jobs;
-      } catch (error) {
-        console.error(
-          `${source.name} source failed:`,
-          error
-        );
-
-        return [];
-      }
-    })
-  );
-
-  const mixedJobs =
-    interleaveSources(results);
-
-  const uniqueJobs =
-    removeDuplicateJobs(
-      mixedJobs
+    seenIds.add(
+      job.id
     );
 
-  return addMatchScores(
-    uniqueJobs
+    seenListings.add(
+      duplicateKey
+    );
+
+    uniqueJobs.push(
+      job
+    );
+  }
+
+  return uniqueJobs;
+}
+
+/*
+ * FETCH SOURCES IN PARALLEL.
+ *
+ * Promise.allSettled means one
+ * provider failing does not
+ * destroy the entire Discover
+ * feed.
+ */
+
+export async function fetchAllJobs():
+  Promise<Job[]> {
+  const results =
+    await Promise.allSettled(
+      jobSources.map(
+        async (
+          source
+        ) => {
+          const jobs =
+            await source.fetchJobs();
+
+          console.log(
+            `[Job Aggregator] ${source.label}: ${jobs.length} jobs`
+          );
+
+          return jobs;
+        }
+      )
+    );
+
+  const collectedJobs:
+    Job[] = [];
+
+  results.forEach(
+    (
+      result,
+      index
+    ) => {
+      const source =
+        jobSources[index];
+
+      if (
+        result.status ===
+        'fulfilled'
+      ) {
+        collectedJobs.push(
+          ...result.value
+        );
+
+        return;
+      }
+
+      console.warn(
+        `[Job Aggregator] Source failed: ${source.label}`,
+        result.reason
+      );
+    }
   );
+
+  const deduplicatedJobs =
+    deduplicateJobs(
+      collectedJobs
+    );
+
+  console.log(
+    `[Job Aggregator] Total: ${collectedJobs.length}`
+  );
+
+  console.log(
+    `[Job Aggregator] After dedupe: ${deduplicatedJobs.length}`
+  );
+
+  return deduplicatedJobs;
 }
