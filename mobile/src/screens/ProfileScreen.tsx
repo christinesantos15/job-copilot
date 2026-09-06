@@ -28,6 +28,8 @@ type ProfileScreenProps = {
   onPreferencesChange?: (
     preferences: JobProfile
   ) => void;
+
+  onOpenResumeProfile?: () => void;
 };
 
 function arrayToText(
@@ -49,6 +51,7 @@ function textToArray(
 
 export default function ProfileScreen({
   onPreferencesChange,
+  onOpenResumeProfile,
 }: ProfileScreenProps) {
   const [
     targetRoles,
@@ -430,6 +433,66 @@ export default function ProfileScreen({
           styles.strengthCard
         }
       >
+        <Pressable
+  style={
+    styles.resumeCard
+  }
+  onPress={
+    onOpenResumeProfile
+  }
+>
+  <View
+    style={
+      styles.resumeCardContent
+    }
+  >
+    <View
+      style={
+        styles.resumeIcon
+      }
+    >
+      <Text
+        style={
+          styles.resumeIconText
+        }
+      >
+        CV
+      </Text>
+    </View>
+
+    <View
+      style={
+        styles.resumeInfo
+      }
+    >
+      <Text
+        style={
+          styles.resumeTitle
+        }
+      >
+        Resume Profile
+      </Text>
+
+      <Text
+        style={
+          styles.resumeSubtitle
+        }
+      >
+        Add your experience,
+        projects, education and
+        actual skills.
+      </Text>
+    </View>
+
+    <Text
+      style={
+        styles.resumeArrow
+      }
+    >
+      ›
+    </Text>
+  </View>
+</Pressable>
         <View
           style={
             styles.strengthHeader
@@ -972,4 +1035,82 @@ const styles =
       fontSize: 11,
       marginTop: 24,
     },
+
+  resumeCard: {
+  backgroundColor:
+    '#111727',
+
+  borderWidth: 1,
+
+  borderColor:
+    '#47377A',
+
+  borderRadius: 18,
+
+  padding: 16,
+
+  marginBottom: 15,
+},
+
+resumeCardContent: {
+  flexDirection: 'row',
+
+  alignItems: 'center',
+},
+
+resumeIcon: {
+  width: 44,
+
+  height: 44,
+
+  borderRadius: 13,
+
+  backgroundColor:
+    '#241B46',
+
+  alignItems: 'center',
+
+  justifyContent:
+    'center',
+
+  marginRight: 13,
+},
+
+resumeIconText: {
+  color: '#A78BFA',
+
+  fontSize: 11,
+
+  fontWeight: '900',
+},
+
+resumeInfo: {
+  flex: 1,
+},
+
+resumeTitle: {
+  color: '#FFFFFF',
+
+  fontSize: 14,
+
+  fontWeight: '900',
+},
+
+resumeSubtitle: {
+  color: '#7F879B',
+
+  fontSize: 10,
+
+  lineHeight: 15,
+
+  marginTop: 3,
+},
+
+resumeArrow: {
+  color: '#A78BFA',
+
+  fontSize: 28,
+
+  marginLeft: 10,
+},
   });

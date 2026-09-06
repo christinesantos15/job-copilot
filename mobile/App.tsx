@@ -59,6 +59,9 @@ import JobDetailsScreen from './src/screens/JobDetailsScreen';
 import ApplicationsScreen from './src/screens/ApplicationsScreen';
 import ProfileScreen from './src/screens/ProfileScreen';
 
+import ResumeProfileScreen
+  from './src/screens/ResumeProfileScreen';
+
 type DetailsOrigin =
   | 'feed'
   | 'interested'
@@ -161,6 +164,11 @@ export default function App() {
     isLoading,
     setIsLoading,
   ] = useState(true);
+
+  const [
+  isResumeProfileOpen,
+  setIsResumeProfileOpen,
+  ] = useState(false);
 
   /*
    * UNSEEN DISCOVER JOBS
@@ -1144,13 +1152,29 @@ export default function App() {
         )}
 
         {activeTab ===
-          'profile' && (
-          <ProfileScreen
-            onPreferencesChange={
-              handlePreferencesChange
-            }
-          />
-        )}
+          'profile' &&
+          (
+            isResumeProfileOpen ? (
+              <ResumeProfileScreen
+                onBack={() =>
+                  setIsResumeProfileOpen(
+                    false
+                  )
+                }
+              />
+            ) : (
+              <ProfileScreen
+                onPreferencesChange={
+                  handlePreferencesChange
+                }
+                onOpenResumeProfile={() =>
+                  setIsResumeProfileOpen(
+                    true
+                  )
+                }
+              />
+            )
+          )}
       </View>
 
       <BottomNav
