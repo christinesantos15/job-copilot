@@ -5,6 +5,7 @@ export type JobSourceType =
   | 'jobstreet'
   | 'lever'
   | 'greenhouse'
+  | 'ashby'
   | 'company'
   | 'mock';
 

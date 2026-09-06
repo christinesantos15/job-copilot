@@ -1,43 +1,33 @@
-import {
-  Job,
-} from '../types/Job';
+import { Job } from '../types/Job';
+import { JobSource } from './jobSource';
 
-import {
-  JobSource,
-} from './jobSource';
-
-import {
-  leverSource,
-} from './leverSource';
+import { leverSource } from './leverSource';
 
 import {
   greenhouseSource,
 } from './greenhouseSource';
 
+import {
+  ashbySource,
+} from './ashbySource';
+
 /*
- * PRODUCTION SOURCES
+ * LIVE PRODUCTION SOURCES
  *
  * mockSource is intentionally
- * NOT included here anymore.
+ * excluded.
  */
 
-const jobSources:
-  JobSource[] = [
-    leverSource,
-    greenhouseSource,
-  ];
-
-/*
- * NORMALIZE TEXT FOR
- * DEDUPLICATION.
- */
+const jobSources: JobSource[] = [
+  leverSource,
+  greenhouseSource,
+  ashbySource,
+];
 
 function normalizeText(
   value?: string
 ) {
-  return (
-    value ?? ''
-  )
+  return (value ?? '')
     .toLowerCase()
     .replace(
       /[^a-z0-9]+/g,
@@ -49,19 +39,6 @@ function normalizeText(
     )
     .trim();
 }
-
-/*
- * Jobs can appear through
- * multiple feeds.
- *
- * Primary identity remains the
- * source-prefixed ID.
- *
- * For cross-source duplicates,
- * compare:
- *
- * company + title + location
- */
 
 function getDuplicateKey(
   job: Job
@@ -93,21 +70,27 @@ function deduplicateJobs(
   const uniqueJobs:
     Job[] = [];
 
-  for (
-    const job of jobs
-  ) {
+  for (const job of jobs) {
+    /*
+     * Exact provider ID match.
+     */
+
     if (
-      seenIds.has(
-        job.id
-      )
+      seenIds.has(job.id)
     ) {
       continue;
     }
 
     const duplicateKey =
-      getDuplicateKey(
-        job
-      );
+      getDuplicateKey(job);
+
+    /*
+     * Cross-provider duplicate.
+     *
+     * Example:
+     * the same company/title/location
+     * appearing through two ATS feeds.
+     */
 
     if (
       seenListings.has(
@@ -117,44 +100,40 @@ function deduplicateJobs(
       continue;
     }
 
-    seenIds.add(
-      job.id
-    );
+    seenIds.add(job.id);
 
     seenListings.add(
       duplicateKey
     );
 
-    uniqueJobs.push(
-      job
-    );
+    uniqueJobs.push(job);
   }
 
   return uniqueJobs;
 }
 
-/*
- * FETCH SOURCES IN PARALLEL.
- *
- * Promise.allSettled means one
- * provider failing does not
- * destroy the entire Discover
- * feed.
- */
-
 export async function fetchAllJobs():
   Promise<Job[]> {
+  console.log(
+    '[Job Aggregator] Fetching live jobs...'
+  );
+
   const results =
     await Promise.allSettled(
       jobSources.map(
-        async (
-          source
-        ) => {
+        async (source) => {
+          const startedAt =
+            Date.now();
+
           const jobs =
             await source.fetchJobs();
 
+          const duration =
+            Date.now() -
+            startedAt;
+
           console.log(
-            `[Job Aggregator] ${source.label}: ${jobs.length} jobs`
+            `[Job Aggregator] ${source.label}: ${jobs.length} jobs (${duration}ms)`
           );
 
           return jobs;
@@ -166,10 +145,7 @@ export async function fetchAllJobs():
     Job[] = [];
 
   results.forEach(
-    (
-      result,
-      index
-    ) => {
+    (result, index) => {
       const source =
         jobSources[index];
 
@@ -196,12 +172,20 @@ export async function fetchAllJobs():
       collectedJobs
     );
 
+  const removedCount =
+    collectedJobs.length -
+    deduplicatedJobs.length;
+
   console.log(
-    `[Job Aggregator] Total: ${collectedJobs.length}`
+    `[Job Aggregator] Total fetched: ${collectedJobs.length}`
   );
 
   console.log(
-    `[Job Aggregator] After dedupe: ${deduplicatedJobs.length}`
+    `[Job Aggregator] Duplicates removed: ${removedCount}`
+  );
+
+  console.log(
+    `[Job Aggregator] Discover jobs: ${deduplicatedJobs.length}`
   );
 
   return deduplicatedJobs;
