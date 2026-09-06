@@ -140,15 +140,19 @@ export default function ResumeProfileScreen({
 
   function addExperience() {
     const experience: ResumeExperience = {
-      id: createId(
-        'experience'
-      ),
+    id: createId('experience'),
 
-      company: '',
+    company: '',
 
-      role: '',
+    role: '',
 
-      description: '',
+    location: '',
+
+    startDate: '',
+
+    endDate: '',
+
+    description: '',
     };
 
     setProfile(
@@ -207,15 +211,15 @@ export default function ResumeProfileScreen({
 
   function addProject() {
     const project: ResumeProject = {
-      id: createId(
-        'project'
-      ),
+    id: createId('project'),
 
-      name: '',
+    name: '',
 
-      description: '',
+    description: '',
 
-      technologies: [],
+    technologies: [],
+
+    link: '',
     };
 
     setProfile(
@@ -274,13 +278,17 @@ export default function ResumeProfileScreen({
 
   function addEducation() {
     const education: ResumeEducation = {
-      id: createId(
-        'education'
-      ),
+    id: createId('education'),
 
-      school: '',
+    school: '',
 
-      qualification: '',
+    qualification: '',
+
+    location: '',
+
+    startDate: '',
+
+    endDate: '',
     };
 
     setProfile(
