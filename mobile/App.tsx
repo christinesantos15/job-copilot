@@ -80,6 +80,15 @@ export default function App() {
     defaultJobFilters
   );
 
+  /*
+   * QUICK DISCOVER SEARCH
+   */
+
+  const [
+    searchQuery,
+    setSearchQuery,
+  ] = useState('');
+
   const [
     preferences,
     setPreferences,
@@ -115,14 +124,6 @@ export default function App() {
 
   /*
    * UNSEEN JOBS
-   *
-   * This is deliberately separate from
-   * filtered jobs.
-   *
-   * That lets us tell the difference between:
-   *
-   * 1. User actually finished the feed
-   * 2. Filters simply returned zero matches
    */
 
   const unseenJobs =
@@ -134,14 +135,42 @@ export default function App() {
     );
 
   /*
-   * FILTERED DISCOVER FEED
+   * SEARCH + FILTER DISCOVER FEED
    */
 
   const feedJobs =
     unseenJobs.filter(
       (job) => {
         /*
-         * KEYWORD
+         * QUICK SEARCH
+         */
+
+        const search =
+          searchQuery
+            .trim()
+            .toLowerCase();
+
+        if (search) {
+          const searchableText = [
+            job.title,
+            job.company,
+            job.description,
+            job.skills.join(' '),
+          ]
+            .join(' ')
+            .toLowerCase();
+
+          if (
+            !searchableText.includes(
+              search
+            )
+          ) {
+            return false;
+          }
+        }
+
+        /*
+         * KEYWORD FILTER
          */
 
         const keyword =
@@ -169,7 +198,7 @@ export default function App() {
         }
 
         /*
-         * LOCATION
+         * LOCATION FILTER
          */
 
         const location =
@@ -187,7 +216,7 @@ export default function App() {
         }
 
         /*
-         * JOB TYPE
+         * JOB TYPE FILTER
          */
 
         const jobType =
@@ -205,7 +234,7 @@ export default function App() {
         }
 
         /*
-         * SOURCE
+         * SOURCE FILTER
          */
 
         const source =
@@ -258,6 +287,14 @@ export default function App() {
 
   const hasUnseenJobs =
     unseenJobs.length > 0;
+
+  /*
+   * CLEAR SEARCH
+   */
+
+  function clearSearch() {
+    setSearchQuery('');
+  }
 
   /*
    * CLEAR FILTERS
@@ -579,12 +616,12 @@ export default function App() {
   /*
    * RESTART DISCOVER FEED
    *
-   * Important:
-   * - Clears seen IDs
-   * - Clears Discover filters
-   * - Preserves Matches
-   * - Preserves Applications
-   * - Preserves Profile preferences
+   * - Clear seen jobs
+   * - Clear search
+   * - Clear filters
+   * - Preserve Matches
+   * - Preserve Applications
+   * - Preserve Profile preferences
    */
 
   async function restartFeed() {
@@ -605,9 +642,11 @@ export default function App() {
       setSeenJobIds([]);
 
       /*
-       * Prevent filters from immediately
-       * hiding the restarted feed.
+       * Clear temporary Discover
+       * search and filters.
        */
+
+      setSearchQuery('');
 
       setFilters({
         ...defaultJobFilters,
@@ -618,6 +657,7 @@ export default function App() {
       );
 
       setSelectedJob(null);
+
       setDetailsOrigin(null);
 
       setActiveTab(
@@ -721,7 +761,9 @@ export default function App() {
         {activeTab ===
           'discover' && (
           <JobFeedScreen
-            job={job}
+            job={
+              job
+            }
 
             interestedCount={
               interestedJobs.length
@@ -731,8 +773,20 @@ export default function App() {
               filters
             }
 
+            searchQuery={
+              searchQuery
+            }
+
             hasUnseenJobs={
               hasUnseenJobs
+            }
+
+            onSearchChange={
+              setSearchQuery
+            }
+
+            onClearSearch={
+              clearSearch
             }
 
             onFiltersChange={

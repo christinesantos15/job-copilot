@@ -26,7 +26,15 @@ type JobFeedScreenProps = {
 
   filters: JobFilters;
 
+  searchQuery: string;
+
   hasUnseenJobs: boolean;
+
+  onSearchChange: (
+    value: string
+  ) => void;
+
+  onClearSearch: () => void;
 
   onFiltersChange: (
     filters: JobFilters
@@ -60,7 +68,10 @@ export default function JobFeedScreen({
   job,
   interestedCount,
   filters,
+  searchQuery,
   hasUnseenJobs,
+  onSearchChange,
+  onClearSearch,
   onFiltersChange,
   onClearFilters,
   onInterested,
@@ -70,6 +81,11 @@ export default function JobFeedScreen({
   onViewApplications,
   onRestartFeed,
 }: JobFeedScreenProps) {
+  const [
+    showSearch,
+    setShowSearch,
+  ] = useState(false);
+
   const [
     showFilters,
     setShowFilters,
@@ -88,6 +104,9 @@ export default function JobFeedScreen({
   const hasActiveFilters =
     activeFilterCount > 0;
 
+  const hasActiveSearch =
+    searchQuery.trim().length > 0;
+
   function updateFilter<
     K extends keyof JobFilters
   >(
@@ -98,6 +117,18 @@ export default function JobFeedScreen({
       ...filters,
       [key]: value,
     });
+  }
+
+  function toggleSearch() {
+    setShowSearch(
+      (current) => !current
+    );
+  }
+
+  function toggleFilters() {
+    setShowFilters(
+      (current) => !current
+    );
   }
 
   return (
@@ -139,9 +170,16 @@ export default function JobFeedScreen({
               styles.headerActions
             }
           >
+            {/* SEARCH BUTTON */}
+
             <Pressable
-              style={
-                styles.headerButton
+              style={[
+                styles.headerButton,
+                showSearch &&
+                  styles.activeHeaderButton,
+              ]}
+              onPress={
+                toggleSearch
               }
             >
               <Text
@@ -151,7 +189,17 @@ export default function JobFeedScreen({
               >
                 🔍
               </Text>
+
+              {hasActiveSearch && (
+                <View
+                  style={
+                    styles.searchBadge
+                  }
+                />
+              )}
             </Pressable>
+
+            {/* FILTER BUTTON */}
 
             <Pressable
               style={[
@@ -159,11 +207,8 @@ export default function JobFeedScreen({
                 showFilters &&
                   styles.activeHeaderButton,
               ]}
-              onPress={() =>
-                setShowFilters(
-                  (current) =>
-                    !current
-                )
+              onPress={
+                toggleFilters
               }
             >
               <Text
@@ -195,6 +240,111 @@ export default function JobFeedScreen({
             </Pressable>
           </View>
         </View>
+
+        {/* SEARCH PANEL */}
+
+        {showSearch && (
+          <View
+            style={
+              styles.searchPanel
+            }
+          >
+            <View
+              style={
+                styles.searchHeader
+              }
+            >
+              <View
+                style={
+                  styles.searchHeaderText
+                }
+              >
+                <Text
+                  style={
+                    styles.searchTitle
+                  }
+                >
+                  Search jobs
+                </Text>
+
+                <Text
+                  style={
+                    styles.searchSubtitle
+                  }
+                >
+                  Search titles, companies,
+                  skills and descriptions
+                </Text>
+              </View>
+
+              {hasActiveSearch && (
+                <Pressable
+                  onPress={
+                    onClearSearch
+                  }
+                >
+                  <Text
+                    style={
+                      styles.clearText
+                    }
+                  >
+                    Clear
+                  </Text>
+                </Pressable>
+              )}
+            </View>
+
+            <View
+              style={
+                styles.searchInputContainer
+              }
+            >
+              <Text
+                style={
+                  styles.searchInputIcon
+                }
+              >
+                🔍
+              </Text>
+
+              <TextInput
+                value={
+                  searchQuery
+                }
+                onChangeText={
+                  onSearchChange
+                }
+                placeholder="React, frontend, Grab..."
+                placeholderTextColor="#666E82"
+                style={
+                  styles.searchInput
+                }
+                autoCapitalize="none"
+                autoCorrect={false}
+                returnKeyType="search"
+              />
+
+              {hasActiveSearch && (
+                <Pressable
+                  style={
+                    styles.searchClearButton
+                  }
+                  onPress={
+                    onClearSearch
+                  }
+                >
+                  <Text
+                    style={
+                      styles.searchClearIcon
+                    }
+                  >
+                    ×
+                  </Text>
+                </Pressable>
+              )}
+            </View>
+          </View>
+        )}
 
         {/* FILTER PANEL */}
 
@@ -461,7 +611,9 @@ export default function JobFeedScreen({
                 styles.sectionTitle
               }
             >
-              Recommended for you
+              {hasActiveSearch
+                ? 'Search results'
+                : 'Recommended for you'}
             </Text>
 
             <Text
@@ -469,8 +621,9 @@ export default function JobFeedScreen({
                 styles.sectionSubtitle
               }
             >
-              Based on your skills and
-              preferences
+              {hasActiveSearch
+                ? `Searching for "${searchQuery.trim()}"`
+                : 'Based on your skills and preferences'}
             </Text>
           </View>
 
@@ -594,9 +747,13 @@ export default function JobFeedScreen({
             </View>
           </>
         ) : hasUnseenJobs &&
-          hasActiveFilters ? (
+          (
+            hasActiveSearch ||
+            hasActiveFilters
+          ) ? (
           /*
-           * FILTERS RETURNED ZERO RESULTS
+           * SEARCH/FILTERS RETURNED
+           * ZERO RESULTS
            */
 
           <View
@@ -617,7 +774,9 @@ export default function JobFeedScreen({
                 styles.emptyTitle
               }
             >
-              No jobs match your filters
+              {hasActiveSearch
+                ? 'No jobs match your search'
+                : 'No jobs match your filters'}
             </Text>
 
             <Text
@@ -625,28 +784,55 @@ export default function JobFeedScreen({
                 styles.emptyDescription
               }
             >
-              There are still jobs in
-              your Discover feed, but
-              none match the filters
-              you've selected.
+              {hasActiveSearch &&
+              hasActiveFilters
+                ? 'No unseen jobs match your current search and filters. Try changing or clearing them.'
+                : hasActiveSearch
+                  ? `No unseen jobs match "${searchQuery.trim()}". Try another title, company or skill.`
+                  : 'There are still jobs in your Discover feed, but none match the filters you selected.'}
             </Text>
 
-            <Pressable
-              style={
-                styles.primaryButton
-              }
-              onPress={
-                onClearFilters
-              }
-            >
-              <Text
+            {hasActiveSearch && (
+              <Pressable
                 style={
-                  styles.primaryButtonText
+                  styles.primaryButton
+                }
+                onPress={
+                  onClearSearch
                 }
               >
-                Clear filters
-              </Text>
-            </Pressable>
+                <Text
+                  style={
+                    styles.primaryButtonText
+                  }
+                >
+                  Clear search
+                </Text>
+              </Pressable>
+            )}
+
+            {hasActiveFilters && (
+              <Pressable
+                style={
+                  hasActiveSearch
+                    ? styles.secondaryButton
+                    : styles.primaryButton
+                }
+                onPress={
+                  onClearFilters
+                }
+              >
+                <Text
+                  style={
+                    hasActiveSearch
+                      ? styles.secondaryButtonText
+                      : styles.primaryButtonText
+                  }
+                >
+                  Clear filters
+                </Text>
+              </Pressable>
+            )}
           </View>
         ) : (
           /*
@@ -744,6 +930,10 @@ const styles =
       paddingBottom: 28,
     },
 
+    /*
+     * HEADER
+     */
+
     header: {
       flexDirection: 'row',
       alignItems: 'center',
@@ -789,6 +979,103 @@ const styles =
     headerIcon: {
       fontSize: 17,
     },
+
+    /*
+     * SEARCH
+     */
+
+    searchBadge: {
+      position: 'absolute',
+      top: 1,
+      right: 1,
+      width: 8,
+      height: 8,
+      borderRadius: 4,
+      backgroundColor:
+        '#8B5CF6',
+    },
+
+    searchPanel: {
+      backgroundColor:
+        '#111727',
+      borderWidth: 1,
+      borderColor:
+        '#252C40',
+      borderRadius: 18,
+      padding: 16,
+      marginBottom: 22,
+    },
+
+    searchHeader: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent:
+        'space-between',
+      marginBottom: 14,
+    },
+
+    searchHeaderText: {
+      flex: 1,
+      paddingRight: 12,
+    },
+
+    searchTitle: {
+      color: '#FFFFFF',
+      fontSize: 18,
+      fontWeight: '700',
+    },
+
+    searchSubtitle: {
+      color: '#858CA0',
+      fontSize: 12,
+      marginTop: 3,
+    },
+
+    searchInputContainer: {
+      minHeight: 48,
+      flexDirection: 'row',
+      alignItems: 'center',
+      backgroundColor:
+        '#080D1A',
+      borderWidth: 1,
+      borderColor:
+        '#2A3247',
+      borderRadius: 12,
+      paddingHorizontal: 13,
+    },
+
+    searchInputIcon: {
+      fontSize: 15,
+      marginRight: 8,
+    },
+
+    searchInput: {
+      flex: 1,
+      minHeight: 46,
+      color: '#FFFFFF',
+      fontSize: 14,
+    },
+
+    searchClearButton: {
+      width: 28,
+      height: 28,
+      borderRadius: 14,
+      alignItems: 'center',
+      justifyContent: 'center',
+      backgroundColor:
+        '#181F31',
+      marginLeft: 8,
+    },
+
+    searchClearIcon: {
+      color: '#AEB4C4',
+      fontSize: 20,
+      lineHeight: 22,
+    },
+
+    /*
+     * FILTER
+     */
 
     filterBadge: {
       position: 'absolute',
@@ -907,6 +1194,10 @@ const styles =
       color: '#C4B5FD',
     },
 
+    /*
+     * TOP TABS
+     */
+
     topTabs: {
       flexDirection: 'row',
       borderBottomWidth: 1,
@@ -940,6 +1231,10 @@ const styles =
       fontSize: 15,
       fontWeight: '600',
     },
+
+    /*
+     * SECTION
+     */
 
     sectionHeader: {
       flexDirection: 'row',
@@ -980,6 +1275,10 @@ const styles =
       fontWeight: '700',
     },
 
+    /*
+     * DETAILS
+     */
+
     detailsButton: {
       marginTop: -10,
       backgroundColor:
@@ -1006,6 +1305,10 @@ const styles =
       color: '#8B5CF6',
       fontSize: 24,
     },
+
+    /*
+     * ACTIONS
+     */
 
     swipeActions: {
       flexDirection: 'row',
@@ -1064,6 +1367,10 @@ const styles =
       fontWeight: '600',
     },
 
+    /*
+     * EMPTY STATES
+     */
+
     emptyCard: {
       backgroundColor:
         '#111727',
@@ -1111,6 +1418,28 @@ const styles =
       fontSize: 13,
       fontWeight: '700',
     },
+
+    secondaryButton: {
+      marginTop: 10,
+      backgroundColor:
+        '#181F31',
+      borderWidth: 1,
+      borderColor:
+        '#343B50',
+      paddingHorizontal: 22,
+      paddingVertical: 13,
+      borderRadius: 12,
+    },
+
+    secondaryButtonText: {
+      color: '#D7DAE4',
+      fontSize: 13,
+      fontWeight: '700',
+    },
+
+    /*
+     * SAVED
+     */
 
     savedButton: {
       alignSelf: 'center',
