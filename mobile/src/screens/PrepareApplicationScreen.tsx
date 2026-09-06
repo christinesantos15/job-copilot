@@ -43,6 +43,9 @@ import TailoredResumeDraftCard
 import ApplicationCopilotCard
   from '../components/ApplicationCopilotCard';
 
+import CoverLetterCard
+  from '../components/CoverLetterCard';
+
 type PrepareApplicationScreenProps = {
   job: Job;
 
@@ -181,6 +184,16 @@ export default function PrepareApplicationScreen({
               resumeProfile
             }
           />
+
+          <CoverLetterCard
+            job={job}
+            preferences={
+                preferences
+            }
+            resume={
+                resumeProfile
+            }
+            />
 
           <ApplicationCopilotCard
             job={job}
