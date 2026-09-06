@@ -1,5 +1,9 @@
 import { Job } from '../types/Job';
-import { jobProfile } from '../profile/jobProfile';
+
+import {
+  JobProfile,
+  jobProfile,
+} from '../profile/jobProfile';
 
 export type MatchResult = {
   score: number;
@@ -13,9 +17,10 @@ function findMissingSkills(
   job: Job,
   matchedSkills: string[]
 ): string[] {
-  const normalizedMatched = matchedSkills.map(
-    (skill) => skill.toLowerCase()
-  );
+  const normalizedMatched =
+    matchedSkills.map((skill) =>
+      skill.toLowerCase()
+    );
 
   return job.skills.filter(
     (skill) =>
@@ -61,10 +66,14 @@ function extractRequiredYears(
 }
 
 export function evaluateJob(
-  job: Job
+  job: Job,
+  profile: JobProfile = jobProfile
 ): MatchResult {
-  const title = job.title.toLowerCase();
-  const location = job.location.toLowerCase();
+  const title =
+    job.title.toLowerCase();
+
+  const location =
+    job.location.toLowerCase();
 
   const searchableText = [
     job.title,
@@ -86,8 +95,11 @@ export function evaluateJob(
   // -------------------------
 
   const targetRole =
-    jobProfile.targetRoles.find((role) =>
-      title.includes(role)
+    profile.targetRoles.find(
+      (role) =>
+        title.includes(
+          role.toLowerCase()
+        )
     );
 
   if (targetRole) {
@@ -104,10 +116,10 @@ export function evaluateJob(
   // -------------------------
 
   const locationMatch =
-    jobProfile.preferredLocations.find(
+    profile.preferredLocations.find(
       (preferredLocation) =>
         location.includes(
-          preferredLocation
+          preferredLocation.toLowerCase()
         )
     );
 
@@ -125,8 +137,11 @@ export function evaluateJob(
   // -------------------------
 
   const preferredLevel =
-    jobProfile.preferredLevels.find(
-      (level) => title.includes(level)
+    profile.preferredLevels.find(
+      (level) =>
+        title.includes(
+          level.toLowerCase()
+        )
     );
 
   if (preferredLevel) {
@@ -144,9 +159,13 @@ export function evaluateJob(
 
   for (
     const skill of
-    jobProfile.preferredSkills
+    profile.preferredSkills
   ) {
-    if (searchableText.includes(skill)) {
+    if (
+      searchableText.includes(
+        skill.toLowerCase()
+      )
+    ) {
       matchedSkills.push(skill);
     }
   }
@@ -155,10 +174,11 @@ export function evaluateJob(
     ...new Set(matchedSkills),
   ];
 
-  const missingSkills = findMissingSkills(
-    job,
-    uniqueMatchedSkills
-  );
+  const missingSkills =
+    findMissingSkills(
+      job,
+      uniqueMatchedSkills
+    );
 
   const skillScore = Math.min(
     uniqueMatchedSkills.length * 7,
@@ -167,9 +187,13 @@ export function evaluateJob(
 
   score += skillScore;
 
-  uniqueMatchedSkills.forEach((skill) => {
-    reasons.push(`Skill: ${skill}`);
-  });
+  uniqueMatchedSkills.forEach(
+    (skill) => {
+      reasons.push(
+        `Skill: ${skill}`
+      );
+    }
+  );
 
   // -------------------------
   // MISSING SKILLS PENALTY
@@ -183,7 +207,9 @@ export function evaluateJob(
         .slice(0, 3)
         .join(', ')}`
     );
-  } else if (missingSkills.length >= 2) {
+  } else if (
+    missingSkills.length >= 2
+  ) {
     score -= 5;
 
     warnings.push(
@@ -198,8 +224,11 @@ export function evaluateJob(
   // -------------------------
 
   const seniorLevel =
-    jobProfile.seniorLevels.find(
-      (level) => title.includes(level)
+    profile.seniorLevels.find(
+      (level) =>
+        title.includes(
+          level.toLowerCase()
+        )
     );
 
   if (seniorLevel) {
@@ -230,12 +259,17 @@ export function evaluateJob(
   ];
 
   const freshGraduateMatch =
-    freshGraduateSignals.find((signal) =>
-      searchableText.includes(signal)
+    freshGraduateSignals.find(
+      (signal) =>
+        searchableText.includes(
+          signal
+        )
     );
 
   const requiredYears =
-    extractRequiredYears(searchableText);
+    extractRequiredYears(
+      searchableText
+    );
 
   if (freshGraduateMatch) {
     score += 15;
@@ -243,20 +277,26 @@ export function evaluateJob(
     reasons.push(
       'Fresh graduate / entry-level friendly'
     );
-  } else if (requiredYears !== null) {
+  } else if (
+    requiredYears !== null
+  ) {
     if (requiredYears <= 1) {
       score += 10;
 
       reasons.push(
         'Experience requirement fits: 0-1 year'
       );
-    } else if (requiredYears === 2) {
+    } else if (
+      requiredYears === 2
+    ) {
       score += 5;
 
       reasons.push(
         'Experience requirement is still reasonable: 2 years'
       );
-    } else if (requiredYears >= 3) {
+    } else if (
+      requiredYears >= 3
+    ) {
       score -= 20;
 
       warnings.push(
@@ -270,9 +310,11 @@ export function evaluateJob(
   // -------------------------
 
   const unrelatedSpecialization =
-    jobProfile.unrelatedSpecializations.find(
+    profile.unrelatedSpecializations.find(
       (specialization) =>
-        title.includes(specialization)
+        title.includes(
+          specialization.toLowerCase()
+        )
     );
 
   if (unrelatedSpecialization) {
@@ -295,22 +337,39 @@ export function evaluateJob(
 
   return {
     score: finalScore,
-    reasons: [...new Set(reasons)],
-    warnings: [...new Set(warnings)],
-    matchedSkills: uniqueMatchedSkills,
+
+    reasons: [
+      ...new Set(reasons),
+    ],
+
+    warnings: [
+      ...new Set(warnings),
+    ],
+
+    matchedSkills:
+      uniqueMatchedSkills,
+
     missingSkills,
   };
 }
 
 export function addMatchScores(
-  jobs: Job[]
+  jobs: Job[],
+  profile: JobProfile = jobProfile
 ): Job[] {
   return jobs.map((job) => {
-    const result = evaluateJob(job);
+    const result =
+      evaluateJob(
+        job,
+        profile
+      );
 
     return {
       ...job,
-      matchScore: result.score,
+
+      matchScore:
+        result.score,
+
       matchReasons: [
         ...result.reasons,
         ...result.warnings,

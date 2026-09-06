@@ -1,408 +1,975 @@
 import {
+  useEffect,
+  useState,
+} from 'react';
+
+import {
+  Alert,
+  Pressable,
   ScrollView,
   StyleSheet,
   Text,
+  TextInput,
   View,
 } from 'react-native';
 
-const skills = [
-  'React',
-  'TypeScript',
-  'Next.js',
-  'JavaScript',
-  'Python',
-  'FastAPI',
-];
+import {
+  JobProfile,
+  jobProfile,
+} from '../profile/jobProfile';
 
-const preferences = [
-  {
-    label: 'Target role',
-    value: 'Junior Software Engineer',
-  },
-  {
-    label: 'Location',
-    value: 'Singapore',
-  },
-  {
-    label: 'Work style',
-    value: 'Hybrid / On-site',
-  },
-  {
-    label: 'Experience level',
-    value: 'Junior / Entry-level',
-  },
-];
+import {
+  loadJobPreferences,
+  resetJobPreferences,
+  saveJobPreferences,
+} from '../storage/jobPreferencesStorage';
 
-export default function ProfileScreen() {
+type ProfileScreenProps = {
+  onPreferencesChange?: (
+    preferences: JobProfile
+  ) => void;
+};
+
+function arrayToText(
+  values: string[]
+) {
+  return values.join(', ');
+}
+
+function textToArray(
+  value: string
+) {
+  return value
+    .split(',')
+    .map((item) =>
+      item.trim().toLowerCase()
+    )
+    .filter(Boolean);
+}
+
+export default function ProfileScreen({
+  onPreferencesChange,
+}: ProfileScreenProps) {
+  const [
+    targetRoles,
+    setTargetRoles,
+  ] = useState('');
+
+  const [
+    preferredLocations,
+    setPreferredLocations,
+  ] = useState('');
+
+  const [
+    preferredLevels,
+    setPreferredLevels,
+  ] = useState('');
+
+  const [
+    preferredSkills,
+    setPreferredSkills,
+  ] = useState('');
+
+  const [
+    isSaving,
+    setIsSaving,
+  ] = useState(false);
+
+  const [
+    hasLoaded,
+    setHasLoaded,
+  ] = useState(false);
+
+  /*
+   * LOAD SAVED PREFERENCES
+   */
+
+  useEffect(() => {
+    async function loadPreferences() {
+      try {
+        const preferences =
+          await loadJobPreferences();
+
+        populateForm(
+          preferences
+        );
+      } catch (error) {
+        console.error(
+          'Failed to load job preferences:',
+          error
+        );
+
+        populateForm(
+          jobProfile
+        );
+      } finally {
+        setHasLoaded(true);
+      }
+    }
+
+    loadPreferences();
+  }, []);
+
+  /*
+   * POPULATE FORM
+   */
+
+  function populateForm(
+    preferences: JobProfile
+  ) {
+    setTargetRoles(
+      arrayToText(
+        preferences.targetRoles
+      )
+    );
+
+    setPreferredLocations(
+      arrayToText(
+        preferences.preferredLocations
+      )
+    );
+
+    setPreferredLevels(
+      arrayToText(
+        preferences.preferredLevels
+      )
+    );
+
+    setPreferredSkills(
+      arrayToText(
+        preferences.preferredSkills
+      )
+    );
+  }
+
+  /*
+   * BUILD PROFILE
+   */
+
+  function buildPreferences(): JobProfile {
+    return {
+      targetRoles:
+        textToArray(
+          targetRoles
+        ),
+
+      preferredLocations:
+        textToArray(
+          preferredLocations
+        ),
+
+      preferredLevels:
+        textToArray(
+          preferredLevels
+        ),
+
+      preferredSkills:
+        textToArray(
+          preferredSkills
+        ),
+
+      seniorLevels:
+        jobProfile.seniorLevels,
+
+      unrelatedSpecializations:
+        jobProfile.unrelatedSpecializations,
+    };
+  }
+
+  /*
+   * SAVE
+   */
+
+  async function handleSave() {
+    const preferences =
+      buildPreferences();
+
+    if (
+      preferences.targetRoles.length ===
+      0
+    ) {
+      Alert.alert(
+        'Target role required',
+        'Add at least one target role.'
+      );
+
+      return;
+    }
+
+    if (
+      preferences
+        .preferredLocations
+        .length === 0
+    ) {
+      Alert.alert(
+        'Location required',
+        'Add at least one preferred location.'
+      );
+
+      return;
+    }
+
+    try {
+      setIsSaving(true);
+
+      await saveJobPreferences(
+        preferences
+      );
+
+      onPreferencesChange?.(
+        preferences
+      );
+
+      Alert.alert(
+        'Preferences saved',
+        'Your job matches have been updated.'
+      );
+    } catch (error) {
+      console.error(
+        'Failed to save job preferences:',
+        error
+      );
+
+      Alert.alert(
+        'Could not save',
+        'Please try again.'
+      );
+    } finally {
+      setIsSaving(false);
+    }
+  }
+
+  /*
+   * RESET
+   */
+
+  function handleReset() {
+    Alert.alert(
+      'Reset preferences?',
+      'This will restore the default Job Copilot preferences.',
+      [
+        {
+          text: 'Cancel',
+          style: 'cancel',
+        },
+        {
+          text: 'Reset',
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              await resetJobPreferences();
+
+              populateForm(
+                jobProfile
+              );
+
+              onPreferencesChange?.(
+                jobProfile
+              );
+
+              Alert.alert(
+                'Preferences reset',
+                'Default preferences restored.'
+              );
+            } catch (error) {
+              console.error(
+                'Failed to reset preferences:',
+                error
+              );
+
+              Alert.alert(
+                'Could not reset',
+                'Please try again.'
+              );
+            }
+          },
+        },
+      ]
+    );
+  }
+
+  /*
+   * DISPLAY VALUES
+   */
+
+  const currentRoles =
+    textToArray(
+      targetRoles
+    );
+
+  const currentLocations =
+    textToArray(
+      preferredLocations
+    );
+
+  const currentSkills =
+    textToArray(
+      preferredSkills
+    );
+
+  let profileStrength = 0;
+
+  if (
+    currentRoles.length > 0
+  ) {
+    profileStrength += 25;
+  }
+
+  if (
+    currentLocations.length > 0
+  ) {
+    profileStrength += 25;
+  }
+
+  if (
+    textToArray(
+      preferredLevels
+    ).length > 0
+  ) {
+    profileStrength += 25;
+  }
+
+  if (
+    currentSkills.length > 0
+  ) {
+    profileStrength += 25;
+  }
+
+  if (!hasLoaded) {
+    return (
+      <View
+        style={
+          styles.loadingContainer
+        }
+      >
+        <Text
+          style={
+            styles.loadingText
+          }
+        >
+          Loading profile...
+        </Text>
+      </View>
+    );
+  }
+
   return (
     <ScrollView
-      style={styles.screen}
-      contentContainerStyle={styles.container}
-      showsVerticalScrollIndicator={false}
+      style={styles.container}
+      contentContainerStyle={
+        styles.content
+      }
+      keyboardShouldPersistTaps="handled"
     >
       <View style={styles.header}>
-        <Text style={styles.eyebrow}>
-          JOB COPILOT
-        </Text>
-
-        <Text style={styles.heading}>
+        <Text style={styles.title}>
           Profile
         </Text>
 
-        <Text style={styles.subtitle}>
-          Your job search preferences
+        <Text
+          style={styles.subtitle}
+        >
+          Personalize your job matches
         </Text>
       </View>
 
-      <View style={styles.profileCard}>
-        <View style={styles.avatar}>
-          <Text style={styles.avatarText}>
+      <View
+        style={
+          styles.profileCard
+        }
+      >
+        <View
+          style={
+            styles.avatar
+          }
+        >
+          <Text
+            style={
+              styles.avatarText
+            }
+          >
             C
           </Text>
         </View>
 
-        <View style={styles.profileInfo}>
-          <Text style={styles.name}>
+        <View
+          style={
+            styles.profileInfo
+          }
+        >
+          <Text
+            style={
+              styles.profileLabel
+            }
+          >
             Job Seeker
           </Text>
 
-          <Text style={styles.role}>
-            Junior Software Engineer
+          <Text
+            style={
+              styles.profileRole
+            }
+          >
+            {currentRoles[0] ??
+              'Add a target role'}
           </Text>
 
-          <Text style={styles.location}>
-            Singapore
+          <Text
+            style={
+              styles.profileLocation
+            }
+          >
+            {currentLocations[0] ??
+              'Add a location'}
           </Text>
         </View>
       </View>
 
-      <Text style={styles.sectionTitle}>
-        Job preferences
-      </Text>
+      <View
+        style={
+          styles.strengthCard
+        }
+      >
+        <View
+          style={
+            styles.strengthHeader
+          }
+        >
+          <Text
+            style={
+              styles.sectionTitle
+            }
+          >
+            Profile strength
+          </Text>
 
-      <View style={styles.preferenceCard}>
-        {preferences.map(
-          (preference, index) => (
-            <View
-              key={preference.label}
-              style={[
-                styles.preferenceRow,
-                index !==
-                  preferences.length - 1 &&
-                  styles.preferenceDivider,
-              ]}
-            >
-              <Text style={styles.preferenceLabel}>
-                {preference.label}
-              </Text>
-
-              <Text style={styles.preferenceValue}>
-                {preference.value}
-              </Text>
-            </View>
-          )
-        )}
-      </View>
-
-      <Text style={styles.sectionTitle}>
-        Skills
-      </Text>
-
-      <View style={styles.skillsCard}>
-        <View style={styles.skills}>
-          {skills.map((skill) => (
-            <View
-              key={skill}
-              style={styles.skillChip}
-            >
-              <Text style={styles.skillText}>
-                {skill}
-              </Text>
-            </View>
-          ))}
+          <Text
+            style={
+              styles.strengthValue
+            }
+          >
+            {profileStrength}%
+          </Text>
         </View>
+
+        <View
+          style={
+            styles.progressTrack
+          }
+        >
+          <View
+            style={[
+              styles.progressBar,
+              {
+                width:
+                  `${profileStrength}%` as `${number}%`,
+              },
+            ]}
+          />
+        </View>
+
+        <Text
+          style={
+            styles.helperText
+          }
+        >
+          Complete your preferences to
+          improve job matching.
+        </Text>
       </View>
 
-      <Text style={styles.sectionTitle}>
-        Match profile
-      </Text>
+      <View
+        style={
+          styles.section
+        }
+      >
+        <Text
+          style={
+            styles.sectionTitle
+          }
+        >
+          Job preferences
+        </Text>
 
-      <View style={styles.matchCard}>
-        <View style={styles.matchTop}>
-          <View>
-            <Text style={styles.matchLabel}>
-              Profile strength
-            </Text>
+        <Text
+          style={
+            styles.fieldLabel
+          }
+        >
+          Target roles
+        </Text>
 
-            <Text style={styles.matchValue}>
-              78%
-            </Text>
+        <TextInput
+          style={styles.input}
+          value={targetRoles}
+          onChangeText={
+            setTargetRoles
+          }
+          placeholder="software engineer, frontend developer"
+          placeholderTextColor="#6E768D"
+          multiline
+        />
+
+        <Text
+          style={
+            styles.inputHint
+          }
+        >
+          Separate roles with commas.
+        </Text>
+
+        <Text
+          style={
+            styles.fieldLabel
+          }
+        >
+          Preferred locations
+        </Text>
+
+        <TextInput
+          style={styles.input}
+          value={
+            preferredLocations
+          }
+          onChangeText={
+            setPreferredLocations
+          }
+          placeholder="singapore"
+          placeholderTextColor="#6E768D"
+          multiline
+        />
+
+        <Text
+          style={
+            styles.inputHint
+          }
+        >
+          Separate locations with commas.
+        </Text>
+
+        <Text
+          style={
+            styles.fieldLabel
+          }
+        >
+          Experience levels
+        </Text>
+
+        <TextInput
+          style={styles.input}
+          value={
+            preferredLevels
+          }
+          onChangeText={
+            setPreferredLevels
+          }
+          placeholder="junior, graduate, entry level"
+          placeholderTextColor="#6E768D"
+          multiline
+        />
+
+        <Text
+          style={
+            styles.inputHint
+          }
+        >
+          Examples: junior, graduate,
+          entry-level, intern.
+        </Text>
+
+        <Text
+          style={
+            styles.fieldLabel
+          }
+        >
+          Skills
+        </Text>
+
+        <TextInput
+          style={[
+            styles.input,
+            styles.skillsInput,
+          ]}
+          value={
+            preferredSkills
+          }
+          onChangeText={
+            setPreferredSkills
+          }
+          placeholder="react, typescript, python"
+          placeholderTextColor="#6E768D"
+          multiline
+        />
+
+        <Text
+          style={
+            styles.inputHint
+          }
+        >
+          Add skills you want Job Copilot
+          to prioritize.
+        </Text>
+      </View>
+
+      {currentSkills.length >
+        0 && (
+        <View
+          style={
+            styles.section
+          }
+        >
+          <Text
+            style={
+              styles.sectionTitle
+            }
+          >
+            Current skills
+          </Text>
+
+          <View
+            style={
+              styles.skillContainer
+            }
+          >
+            {currentSkills.map(
+              (skill) => (
+                <View
+                  key={skill}
+                  style={
+                    styles.skillChip
+                  }
+                >
+                  <Text
+                    style={
+                      styles.skillText
+                    }
+                  >
+                    {skill}
+                  </Text>
+                </View>
+              )
+            )}
           </View>
-
-          <View style={styles.matchIcon}>
-            <Text style={styles.matchIconText}>
-              ✦
-            </Text>
-          </View>
         </View>
+      )}
 
-        <View style={styles.progressTrack}>
-          <View style={styles.progressFill} />
-        </View>
-
-        <Text style={styles.matchHint}>
-          Job Copilot uses your skills and
-          preferences to calculate match scores.
+      <Pressable
+        style={({ pressed }) => [
+          styles.saveButton,
+          pressed &&
+            styles.buttonPressed,
+          isSaving &&
+            styles.disabledButton,
+        ]}
+        disabled={isSaving}
+        onPress={handleSave}
+      >
+        <Text
+          style={
+            styles.saveButtonText
+          }
+        >
+          {isSaving
+            ? 'Saving...'
+            : 'Save preferences'}
         </Text>
-      </View>
+      </Pressable>
 
-      <View style={styles.versionCard}>
-        <Text style={styles.versionTitle}>
-          Job Copilot
+      <Pressable
+        style={({ pressed }) => [
+          styles.resetButton,
+          pressed &&
+            styles.buttonPressed,
+        ]}
+        onPress={handleReset}
+      >
+        <Text
+          style={
+            styles.resetButtonText
+          }
+        >
+          Reset to defaults
         </Text>
+      </Pressable>
 
-        <Text style={styles.versionText}>
-          V1.0
-        </Text>
-      </View>
+      <Text
+        style={
+          styles.versionText
+        }
+      >
+        Job Copilot V1.1
+      </Text>
     </ScrollView>
   );
 }
 
-const styles = StyleSheet.create({
-  screen: {
-    flex: 1,
-    backgroundColor: '#080D1A',
-  },
+const styles =
+  StyleSheet.create({
+    container: {
+      flex: 1,
+      backgroundColor:
+        '#080D1A',
+    },
 
-  container: {
-    paddingHorizontal: 20,
-    paddingTop: 24,
-    paddingBottom: 32,
-  },
+    content: {
+      paddingHorizontal: 20,
+      paddingTop: 24,
+      paddingBottom: 48,
+    },
 
-  header: {
-    marginBottom: 24,
-  },
+    loadingContainer: {
+      flex: 1,
+      alignItems: 'center',
+      justifyContent: 'center',
+      backgroundColor:
+        '#080D1A',
+    },
 
-  eyebrow: {
-    color: '#8B5CF6',
-    fontSize: 11,
-    fontWeight: '800',
-    letterSpacing: 1.4,
-    marginBottom: 5,
-  },
+    loadingText: {
+      color: '#FFFFFF',
+      fontSize: 16,
+    },
 
-  heading: {
-    color: '#FFFFFF',
-    fontSize: 30,
-    fontWeight: '800',
-  },
+    header: {
+      marginBottom: 22,
+    },
 
-  subtitle: {
-    color: '#858CA0',
-    fontSize: 13,
-    marginTop: 4,
-  },
+    title: {
+      color: '#FFFFFF',
+      fontSize: 30,
+      fontWeight: '800',
+    },
 
-  profileCard: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#111727',
-    borderWidth: 1,
-    borderColor: '#252C40',
-    borderRadius: 20,
-    padding: 18,
-    marginBottom: 28,
-  },
+    subtitle: {
+      color: '#9298AA',
+      fontSize: 14,
+      marginTop: 4,
+    },
 
-  avatar: {
-    width: 58,
-    height: 58,
-    borderRadius: 29,
-    backgroundColor: '#7C3AED',
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginRight: 14,
-  },
+    profileCard: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      padding: 18,
+      borderRadius: 22,
+      backgroundColor:
+        '#12182A',
+      borderWidth: 1,
+      borderColor:
+        '#202840',
+      marginBottom: 16,
+    },
 
-  avatarText: {
-    color: '#FFFFFF',
-    fontSize: 24,
-    fontWeight: '900',
-  },
+    avatar: {
+      width: 60,
+      height: 60,
+      borderRadius: 30,
+      alignItems: 'center',
+      justifyContent: 'center',
+      backgroundColor:
+        '#7C5CFC',
+      marginRight: 16,
+    },
 
-  profileInfo: {
-    flex: 1,
-  },
+    avatarText: {
+      color: '#FFFFFF',
+      fontSize: 24,
+      fontWeight: '800',
+    },
 
-  name: {
-    color: '#FFFFFF',
-    fontSize: 18,
-    fontWeight: '800',
-  },
+    profileInfo: {
+      flex: 1,
+    },
 
-  role: {
-    color: '#A78BFA',
-    fontSize: 13,
-    fontWeight: '600',
-    marginTop: 3,
-  },
+    profileLabel: {
+      color: '#969DB1',
+      fontSize: 12,
+      fontWeight: '600',
+      marginBottom: 3,
+    },
 
-  location: {
-    color: '#858CA0',
-    fontSize: 12,
-    marginTop: 4,
-  },
+    profileRole: {
+      color: '#FFFFFF',
+      fontSize: 17,
+      fontWeight: '700',
+      textTransform:
+        'capitalize',
+    },
 
-  sectionTitle: {
-    color: '#FFFFFF',
-    fontSize: 17,
-    fontWeight: '800',
-    marginBottom: 11,
-  },
+    profileLocation: {
+      color: '#A9AFC0',
+      fontSize: 13,
+      marginTop: 4,
+      textTransform:
+        'capitalize',
+    },
 
-  preferenceCard: {
-    backgroundColor: '#111727',
-    borderWidth: 1,
-    borderColor: '#252C40',
-    borderRadius: 18,
-    paddingHorizontal: 16,
-    marginBottom: 27,
-  },
+    strengthCard: {
+      padding: 18,
+      borderRadius: 20,
+      backgroundColor:
+        '#12182A',
+      borderWidth: 1,
+      borderColor:
+        '#202840',
+      marginBottom: 16,
+    },
 
-  preferenceRow: {
-    paddingVertical: 15,
-  },
+    strengthHeader: {
+      flexDirection: 'row',
+      justifyContent:
+        'space-between',
+      alignItems: 'center',
+    },
 
-  preferenceDivider: {
-    borderBottomWidth: 1,
-    borderBottomColor: '#252C40',
-  },
+    strengthValue: {
+      color: '#9A7DFF',
+      fontSize: 17,
+      fontWeight: '800',
+    },
 
-  preferenceLabel: {
-    color: '#767E92',
-    fontSize: 10,
-    fontWeight: '700',
-    textTransform: 'uppercase',
-    letterSpacing: 0.7,
-    marginBottom: 5,
-  },
+    progressTrack: {
+      height: 8,
+      borderRadius: 8,
+      overflow: 'hidden',
+      backgroundColor:
+        '#242B3D',
+      marginTop: 14,
+    },
 
-  preferenceValue: {
-    color: '#FFFFFF',
-    fontSize: 14,
-    fontWeight: '600',
-  },
+    progressBar: {
+      height: '100%',
+      borderRadius: 8,
+      backgroundColor:
+        '#7C5CFC',
+    },
 
-  skillsCard: {
-    backgroundColor: '#111727',
-    borderWidth: 1,
-    borderColor: '#252C40',
-    borderRadius: 18,
-    padding: 16,
-    marginBottom: 27,
-  },
+    helperText: {
+      color: '#82899C',
+      fontSize: 12,
+      lineHeight: 18,
+      marginTop: 10,
+    },
 
-  skills: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 8,
-  },
+    section: {
+      padding: 18,
+      borderRadius: 20,
+      backgroundColor:
+        '#12182A',
+      borderWidth: 1,
+      borderColor:
+        '#202840',
+      marginBottom: 16,
+    },
 
-  skillChip: {
-    backgroundColor: '#242040',
-    borderWidth: 1,
-    borderColor: '#3A3061',
-    borderRadius: 10,
-    paddingHorizontal: 11,
-    paddingVertical: 7,
-  },
+    sectionTitle: {
+      color: '#FFFFFF',
+      fontSize: 17,
+      fontWeight: '700',
+    },
 
-  skillText: {
-    color: '#C4B5FD',
-    fontSize: 11,
-    fontWeight: '700',
-  },
+    fieldLabel: {
+      color: '#D7DAE4',
+      fontSize: 13,
+      fontWeight: '600',
+      marginTop: 20,
+      marginBottom: 8,
+    },
 
-  matchCard: {
-    backgroundColor: '#111727',
-    borderWidth: 1,
-    borderColor: '#252C40',
-    borderRadius: 18,
-    padding: 17,
-    marginBottom: 24,
-  },
+    input: {
+      minHeight: 50,
+      paddingHorizontal: 14,
+      paddingVertical: 12,
+      borderRadius: 14,
+      borderWidth: 1,
+      borderColor:
+        '#303850',
+      backgroundColor:
+        '#0B1120',
+      color: '#FFFFFF',
+      fontSize: 14,
+      textAlignVertical:
+        'top',
+    },
 
-  matchTop: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-  },
+    skillsInput: {
+      minHeight: 90,
+    },
 
-  matchLabel: {
-    color: '#858CA0',
-    fontSize: 11,
-    fontWeight: '700',
-  },
+    inputHint: {
+      color: '#777F95',
+      fontSize: 11,
+      lineHeight: 16,
+      marginTop: 6,
+    },
 
-  matchValue: {
-    color: '#FFFFFF',
-    fontSize: 27,
-    fontWeight: '900',
-    marginTop: 3,
-  },
+    skillContainer: {
+      flexDirection: 'row',
+      flexWrap: 'wrap',
+      gap: 8,
+      marginTop: 14,
+    },
 
-  matchIcon: {
-    width: 42,
-    height: 42,
-    borderRadius: 14,
-    backgroundColor: '#251D43',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
+    skillChip: {
+      borderRadius: 999,
+      paddingHorizontal: 12,
+      paddingVertical: 7,
+      backgroundColor:
+        '#272047',
+    },
 
-  matchIconText: {
-    color: '#A78BFA',
-    fontSize: 21,
-  },
+    skillText: {
+      color: '#C7B8FF',
+      fontSize: 12,
+      fontWeight: '600',
+      textTransform:
+        'capitalize',
+    },
 
-  progressTrack: {
-    height: 7,
-    borderRadius: 10,
-    backgroundColor: '#22293A',
-    marginTop: 15,
-    overflow: 'hidden',
-  },
+    saveButton: {
+      alignItems: 'center',
+      justifyContent: 'center',
+      minHeight: 54,
+      borderRadius: 16,
+      backgroundColor:
+        '#7C5CFC',
+      marginTop: 4,
+    },
 
-  progressFill: {
-    width: '78%',
-    height: '100%',
-    backgroundColor: '#8B5CF6',
-    borderRadius: 10,
-  },
+    saveButtonText: {
+      color: '#FFFFFF',
+      fontSize: 15,
+      fontWeight: '700',
+    },
 
-  matchHint: {
-    color: '#777F92',
-    fontSize: 11,
-    lineHeight: 17,
-    marginTop: 13,
-  },
+    resetButton: {
+      alignItems: 'center',
+      justifyContent: 'center',
+      minHeight: 50,
+      borderRadius: 16,
+      borderWidth: 1,
+      borderColor:
+        '#343C55',
+      marginTop: 12,
+    },
 
-  versionCard: {
-    alignItems: 'center',
-    paddingVertical: 16,
-  },
+    resetButtonText: {
+      color: '#A8AEC0',
+      fontSize: 14,
+      fontWeight: '600',
+    },
 
-  versionTitle: {
-    color: '#777F92',
-    fontSize: 11,
-    fontWeight: '700',
-  },
+    buttonPressed: {
+      opacity: 0.75,
+    },
 
-  versionText: {
-    color: '#555D70',
-    fontSize: 10,
-    marginTop: 3,
-  },
-});
+    disabledButton: {
+      opacity: 0.6,
+    },
+
+    versionText: {
+      color: '#555D73',
+      textAlign: 'center',
+      fontSize: 11,
+      marginTop: 24,
+    },
+  });

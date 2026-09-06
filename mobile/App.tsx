@@ -16,11 +16,26 @@ import {
 } from './src/storage/jobStorage';
 
 import {
+  loadJobPreferences,
+} from './src/storage/jobPreferencesStorage';
+
+import {
   ApplicationStatus,
   Job,
 } from './src/types/Job';
 
-import { fetchAllJobs } from './src/sources/jobAggregator';
+import {
+  JobProfile,
+  jobProfile,
+} from './src/profile/jobProfile';
+
+import {
+  addMatchScores,
+} from './src/matching/jobMatcher';
+
+import {
+  fetchAllJobs,
+} from './src/sources/jobAggregator';
 
 import BottomNav, {
   MainTab,
@@ -55,6 +70,13 @@ export default function App() {
   ] = useState<string[]>([]);
 
   const [
+    preferences,
+    setPreferences,
+  ] = useState<JobProfile>(
+    jobProfile
+  );
+
+  const [
     selectedJob,
     setSelectedJob,
   ] = useState<Job | null>(null);
@@ -62,7 +84,9 @@ export default function App() {
   const [
     detailsOrigin,
     setDetailsOrigin,
-  ] = useState<DetailsOrigin>(null);
+  ] = useState<DetailsOrigin>(
+    null
+  );
 
   const [
     isLoading,
@@ -77,7 +101,7 @@ export default function App() {
   );
 
   /*
-   * BUILD FEED FROM UNSEEN JOBS
+   * BUILD FEED
    */
 
   const feedJobs =
@@ -101,19 +125,37 @@ export default function App() {
         const [
           savedInterestedJobs,
           savedSeenJobIds,
+          savedPreferences,
           fetchedJobs,
         ] = await Promise.all([
           loadInterestedJobs(),
           loadSeenJobIds(),
+          loadJobPreferences(),
           fetchAllJobs(),
         ]);
 
+        const scoredJobs =
+          addMatchScores(
+            fetchedJobs,
+            savedPreferences
+          );
+
+        const scoredInterestedJobs =
+          addMatchScores(
+            savedInterestedJobs,
+            savedPreferences
+          );
+
+        setPreferences(
+          savedPreferences
+        );
+
         setAvailableJobs(
-          fetchedJobs
+          scoredJobs
         );
 
         setInterestedJobs(
-          savedInterestedJobs
+          scoredInterestedJobs
         );
 
         setSeenJobIds(
@@ -133,8 +175,7 @@ export default function App() {
   }, []);
 
   /*
-   * SAVE INTERESTED /
-   * APPLICATION JOBS
+   * SAVE INTERESTED JOBS
    */
 
   useEffect(() => {
@@ -156,7 +197,7 @@ export default function App() {
   ]);
 
   /*
-   * SAVE SEEN JOB IDS
+   * SAVE SEEN IDS
    */
 
   useEffect(() => {
@@ -178,7 +219,52 @@ export default function App() {
   ]);
 
   /*
-   * MARK JOB AS SEEN
+   * PROFILE PREFERENCES CHANGED
+   */
+
+  function handlePreferencesChange(
+    updatedPreferences: JobProfile
+  ) {
+    setPreferences(
+      updatedPreferences
+    );
+
+    setAvailableJobs(
+      (previousJobs) =>
+        addMatchScores(
+          previousJobs,
+          updatedPreferences
+        )
+    );
+
+    setInterestedJobs(
+      (previousJobs) =>
+        addMatchScores(
+          previousJobs,
+          updatedPreferences
+        )
+    );
+
+    setSelectedJob(
+      (previousJob) => {
+        if (!previousJob) {
+          return null;
+        }
+
+        return addMatchScores(
+          [previousJob],
+          updatedPreferences
+        )[0];
+      }
+    );
+
+    console.log(
+      'Job match scores refreshed.'
+    );
+  }
+
+  /*
+   * MARK JOB SEEN
    */
 
   function markJobAsSeen(
@@ -203,7 +289,7 @@ export default function App() {
   }
 
   /*
-   * SWIPE RIGHT
+   * INTERESTED
    */
 
   function handleInterested(
@@ -246,7 +332,7 @@ export default function App() {
   }
 
   /*
-   * SWIPE LEFT
+   * PASS
    */
 
   function handleSkipped(
@@ -263,7 +349,7 @@ export default function App() {
   }
 
   /*
-   * UPDATE APPLICATION STATUS
+   * APPLICATION STATUS
    */
 
   function handleStatusChange(
@@ -286,7 +372,7 @@ export default function App() {
   }
 
   /*
-   * OPEN DETAILS FROM FEED
+   * OPEN DETAILS FROM DISCOVER
    */
 
   function openJobDetailsFromFeed(
@@ -337,10 +423,9 @@ export default function App() {
   }
 
   /*
-   * RESTART FEED
+   * RESTART DISCOVER FEED
    *
-   * Reset only the Discover session.
-   * Matches and application history stay saved.
+   * Matches and Applications remain saved.
    */
 
   async function restartFeed() {
@@ -352,10 +437,16 @@ export default function App() {
       const refreshedJobs =
         await fetchAllJobs();
 
+      const scoredJobs =
+        addMatchScores(
+          refreshedJobs,
+          preferences
+        );
+
       setSeenJobIds([]);
 
       setAvailableJobs(
-        refreshedJobs
+        scoredJobs
       );
 
       setSelectedJob(null);
@@ -373,7 +464,7 @@ export default function App() {
 
       console.log(
         'Jobs available:',
-        refreshedJobs.length
+        scoredJobs.length
       );
     } catch (error) {
       console.error(
@@ -386,7 +477,7 @@ export default function App() {
   }
 
   /*
-   * LOADING SCREEN
+   * LOADING
    */
 
   if (isLoading) {
@@ -440,7 +531,7 @@ export default function App() {
   }
 
   /*
-   * MAIN APP SHELL
+   * MAIN APP
    */
 
   return (
@@ -529,7 +620,11 @@ export default function App() {
 
         {activeTab ===
           'profile' && (
-          <ProfileScreen />
+          <ProfileScreen
+            onPreferencesChange={
+              handlePreferencesChange
+            }
+          />
         )}
       </View>
 
@@ -558,8 +653,7 @@ const styles =
     loadingContainer: {
       flex: 1,
       alignItems: 'center',
-      justifyContent:
-        'center',
+      justifyContent: 'center',
       gap: 12,
       backgroundColor:
         '#080D1A',
