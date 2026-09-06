@@ -342,7 +342,7 @@ export default function App() {
   }
 
   /*
-   * INITIAL LOAD
+   * LOAD APP
    */
 
   useEffect(() => {
@@ -394,7 +394,9 @@ export default function App() {
           error
         );
       } finally {
-        setIsLoading(false);
+        setIsLoading(
+          false
+        );
       }
     }
 
@@ -487,7 +489,7 @@ export default function App() {
   }
 
   /*
-   * MARK JOB AS SEEN
+   * MARK SEEN
    */
 
   function markJobAsSeen(
@@ -536,6 +538,7 @@ export default function App() {
         const interestedJob: Job =
           {
             ...selectedJob,
+
             applicationStatus:
               'interested',
           };
@@ -553,7 +556,7 @@ export default function App() {
   }
 
   /*
-   * PASS JOB
+   * PASS
    */
 
   function handleSkipped(
@@ -566,22 +569,12 @@ export default function App() {
 
   /*
    * APPLICATION STATUS
-   *
-   * Works from Matches AND
-   * Job Details.
-   *
-   * Moving to Applied for the
-   * first time records today's
-   * date automatically.
    */
 
   function handleStatusChange(
     jobId: string,
     status: ApplicationStatus
   ) {
-    let updatedSelectedJob:
-      Job | null = null;
-
     setInterestedJobs(
       (previousJobs) =>
         previousJobs.map(
@@ -598,23 +591,17 @@ export default function App() {
                 'applied' &&
               !savedJob.appliedDate;
 
-            const updatedJob: Job =
-              {
-                ...savedJob,
+            return {
+              ...savedJob,
 
-                applicationStatus:
-                  status,
+              applicationStatus:
+                status,
 
-                appliedDate:
-                  shouldAddAppliedDate
-                    ? getTodayDate()
-                    : savedJob.appliedDate,
-              };
-
-            updatedSelectedJob =
-              updatedJob;
-
-            return updatedJob;
+              appliedDate:
+                shouldAddAppliedDate
+                  ? getTodayDate()
+                  : savedJob.appliedDate,
+            };
           }
         )
     );
@@ -650,7 +637,7 @@ export default function App() {
   }
 
   /*
-   * APPLICATION NOTES
+   * NOTES
    */
 
   function handleNotesChange(
@@ -689,7 +676,7 @@ export default function App() {
   }
 
   /*
-   * APPLICATION DATES
+   * TRACKING
    */
 
   function handleTrackingChange(
@@ -728,7 +715,69 @@ export default function App() {
   }
 
   /*
-   * OPEN DETAILS FROM DISCOVER
+   * REMOVE SAVED JOB
+   *
+   * This removes it from
+   * interestedJobs only.
+   *
+   * The seen-job state remains
+   * unchanged, so it does not
+   * immediately reappear in
+   * Discover.
+   */
+
+  function handleRemoveSavedJob(
+    jobId: string
+  ) {
+    const origin =
+      detailsOrigin;
+
+    setInterestedJobs(
+      (previousJobs) =>
+        previousJobs.filter(
+          (savedJob) =>
+            savedJob.id !==
+            jobId
+        )
+    );
+
+    setSelectedJob(
+      null
+    );
+
+    setDetailsOrigin(
+      null
+    );
+
+    if (
+      origin ===
+      'applications'
+    ) {
+      setActiveTab(
+        'applications'
+      );
+
+      return;
+    }
+
+    if (
+      origin ===
+      'interested'
+    ) {
+      setActiveTab(
+        'matches'
+      );
+
+      return;
+    }
+
+    setActiveTab(
+      'discover'
+    );
+  }
+
+  /*
+   * DETAILS FROM DISCOVER
    */
 
   function openJobDetailsFromFeed(
@@ -744,7 +793,7 @@ export default function App() {
   }
 
   /*
-   * OPEN DETAILS FROM MATCHES
+   * DETAILS FROM MATCHES
    */
 
   function openJobDetailsFromInterested(
@@ -760,7 +809,7 @@ export default function App() {
   }
 
   /*
-   * OPEN DETAILS FROM APPLICATIONS
+   * DETAILS FROM APPLICATIONS
    */
 
   function openJobDetailsFromApplications(
@@ -776,15 +825,20 @@ export default function App() {
   }
 
   /*
-   * CLOSE JOB DETAILS
+   * CLOSE DETAILS
    */
 
   function closeJobDetails() {
     const origin =
       detailsOrigin;
 
-    setSelectedJob(null);
-    setDetailsOrigin(null);
+    setSelectedJob(
+      null
+    );
+
+    setDetailsOrigin(
+      null
+    );
 
     if (
       origin ===
@@ -815,15 +869,13 @@ export default function App() {
 
   /*
    * RESTART DISCOVER
-   *
-   * Only reset the feed session.
-   * Saved matches, statuses,
-   * notes and timeline remain.
    */
 
   async function restartFeed() {
     try {
-      setIsLoading(true);
+      setIsLoading(
+        true
+      );
 
       await clearFeedSession();
 
@@ -848,9 +900,13 @@ export default function App() {
         defaultJobFilters
       );
 
-      setSelectedJob(null);
+      setSelectedJob(
+        null
+      );
 
-      setDetailsOrigin(null);
+      setDetailsOrigin(
+        null
+      );
 
       setActiveTab(
         'discover'
@@ -861,7 +917,9 @@ export default function App() {
         error
       );
     } finally {
-      setIsLoading(false);
+      setIsLoading(
+        false
+      );
     }
   }
 
@@ -904,14 +962,20 @@ export default function App() {
       );
 
     return (
-      <View style={styles.app}>
+      <View
+        style={
+          styles.app
+        }
+      >
         <View
           style={
             styles.content
           }
         >
           <JobDetailsScreen
-            job={selectedJob}
+            job={
+              selectedJob
+            }
             onBack={
               closeJobDetails
             }
@@ -928,6 +992,11 @@ export default function App() {
             onStatusChange={
               isSavedJob
                 ? handleStatusChange
+                : undefined
+            }
+            onRemoveSavedJob={
+              isSavedJob
+                ? handleRemoveSavedJob
                 : undefined
             }
           />
@@ -962,7 +1031,11 @@ export default function App() {
    */
 
   return (
-    <View style={styles.app}>
+    <View
+      style={
+        styles.app
+      }
+    >
       <View
         style={
           styles.content
@@ -975,7 +1048,9 @@ export default function App() {
             interestedCount={
               interestedJobs.length
             }
-            filters={filters}
+            filters={
+              filters
+            }
             searchQuery={
               searchQuery
             }

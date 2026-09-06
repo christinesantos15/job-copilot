@@ -4,6 +4,7 @@ import {
 } from 'react';
 
 import {
+  Alert,
   Linking,
   Pressable,
   ScrollView,
@@ -30,6 +31,7 @@ type TrackingUpdates =
 
 type JobDetailsScreenProps = {
   job: Job;
+
   onBack: () => void;
 
   onNotesChange?: (
@@ -45,6 +47,10 @@ type JobDetailsScreenProps = {
   onStatusChange?: (
     jobId: string,
     status: ApplicationStatus
+  ) => void;
+
+  onRemoveSavedJob?: (
+    jobId: string
   ) => void;
 };
 
@@ -91,6 +97,7 @@ export default function JobDetailsScreen({
   onNotesChange,
   onTrackingChange,
   onStatusChange,
+  onRemoveSavedJob,
 }: JobDetailsScreenProps) {
   const [
     notes,
@@ -149,9 +156,10 @@ export default function JobDetailsScreen({
   );
 
   /*
-   * Keep local form state synced
-   * with the selected job.
+   * KEEP LOCAL FORM STATE
+   * SYNCED WITH SELECTED JOB
    */
+
   useEffect(() => {
     const nextNotes =
       job.notes ?? '';
@@ -219,6 +227,10 @@ export default function JobDetailsScreen({
     followUpDate !==
       savedFollowUpDate;
 
+  /*
+   * NOTES
+   */
+
   function saveNotes() {
     if (!onNotesChange) {
       return;
@@ -255,6 +267,10 @@ export default function JobDetailsScreen({
     );
   }
 
+  /*
+   * TIMELINE
+   */
+
   function saveTracking() {
     if (!onTrackingChange) {
       return;
@@ -274,8 +290,10 @@ export default function JobDetailsScreen({
       {
         appliedDate:
           nextAppliedDate,
+
         interviewDate:
           nextInterviewDate,
+
         followUpDate:
           nextFollowUpDate,
       }
@@ -330,6 +348,10 @@ export default function JobDetailsScreen({
     );
   }
 
+  /*
+   * STATUS
+   */
+
   function updateStatus(
     status: ApplicationStatus
   ) {
@@ -342,6 +364,40 @@ export default function JobDetailsScreen({
       status
     );
   }
+
+  /*
+   * REMOVE SAVED JOB
+   */
+
+  function confirmRemoveSavedJob() {
+    if (!onRemoveSavedJob) {
+      return;
+    }
+
+    Alert.alert(
+      'Remove saved job?',
+      `Remove ${job.title} at ${job.company} from Matches and Applications?`,
+      [
+        {
+          text: 'Cancel',
+          style: 'cancel',
+        },
+        {
+          text: 'Remove',
+          style: 'destructive',
+          onPress: () => {
+            onRemoveSavedJob(
+              job.id
+            );
+          },
+        },
+      ]
+    );
+  }
+
+  /*
+   * ORIGINAL LISTING
+   */
 
   function openOriginalListing() {
     if (!job.sourceUrl) {
@@ -376,6 +432,7 @@ export default function JobDetailsScreen({
         <Pressable
           style={({ pressed }) => [
             styles.backButton,
+
             pressed &&
               styles.buttonPressed,
           ]}
@@ -391,7 +448,9 @@ export default function JobDetailsScreen({
         </Pressable>
 
         <Text
-          style={styles.headerTitle}
+          style={
+            styles.headerTitle
+          }
         >
           Job details
         </Text>
@@ -494,14 +553,18 @@ export default function JobDetailsScreen({
 
       {onStatusChange && (
         <View
-          style={styles.sectionCard}
+          style={
+            styles.sectionCard
+          }
         >
           <View
             style={
               styles.sectionHeaderRow
             }
           >
-            <View style={{ flex: 1 }}>
+            <View
+              style={{ flex: 1 }}
+            >
               <Text
                 style={
                   styles.sectionTitle
@@ -602,16 +665,22 @@ export default function JobDetailsScreen({
       {/* ABOUT */}
 
       <View
-        style={styles.sectionCard}
+        style={
+          styles.sectionCard
+        }
       >
         <Text
-          style={styles.sectionTitle}
+          style={
+            styles.sectionTitle
+          }
         >
           About the role
         </Text>
 
         <Text
-          style={styles.description}
+          style={
+            styles.description
+          }
         >
           {job.description}
         </Text>
@@ -619,9 +688,12 @@ export default function JobDetailsScreen({
 
       {/* SKILLS */}
 
-      {job.skills.length > 0 && (
+      {job.skills.length >
+        0 && (
         <View
-          style={styles.sectionCard}
+          style={
+            styles.sectionCard
+          }
         >
           <Text
             style={
@@ -712,14 +784,18 @@ export default function JobDetailsScreen({
 
       {onTrackingChange && (
         <View
-          style={styles.sectionCard}
+          style={
+            styles.sectionCard
+          }
         >
           <View
             style={
               styles.sectionHeaderRow
             }
           >
-            <View style={{ flex: 1 }}>
+            <View
+              style={{ flex: 1 }}
+            >
               <Text
                 style={
                   styles.sectionTitle
@@ -760,7 +836,9 @@ export default function JobDetailsScreen({
           </View>
 
           <Text
-            style={styles.inputLabel}
+            style={
+              styles.inputLabel
+            }
           >
             Applied
           </Text>
@@ -777,7 +855,9 @@ export default function JobDetailsScreen({
           />
 
           <Text
-            style={styles.inputLabel}
+            style={
+              styles.inputLabel
+            }
           >
             Interview
           </Text>
@@ -794,7 +874,9 @@ export default function JobDetailsScreen({
           />
 
           <Text
-            style={styles.inputLabel}
+            style={
+              styles.inputLabel
+            }
           >
             Follow up
           </Text>
@@ -869,8 +951,7 @@ export default function JobDetailsScreen({
                 styles.unsavedText
               }
             >
-              Unsaved timeline
-              changes
+              Unsaved timeline changes
             </Text>
           )}
         </View>
@@ -880,14 +961,18 @@ export default function JobDetailsScreen({
 
       {onNotesChange && (
         <View
-          style={styles.sectionCard}
+          style={
+            styles.sectionCard
+          }
         >
           <View
             style={
               styles.sectionHeaderRow
             }
           >
-            <View style={{ flex: 1 }}>
+            <View
+              style={{ flex: 1 }}
+            >
               <Text
                 style={
                   styles.sectionTitle
@@ -1003,10 +1088,14 @@ export default function JobDetailsScreen({
       {/* ORIGINAL LISTING */}
 
       <View
-        style={styles.sectionCard}
+        style={
+          styles.sectionCard
+        }
       >
         <Text
-          style={styles.sectionTitle}
+          style={
+            styles.sectionTitle
+          }
         >
           Original listing
         </Text>
@@ -1049,6 +1138,55 @@ export default function JobDetailsScreen({
           </Text>
         </Pressable>
       </View>
+
+      {/* REMOVE SAVED JOB */}
+
+      {onRemoveSavedJob && (
+        <View
+          style={
+            styles.dangerCard
+          }
+        >
+          <Text
+            style={
+              styles.dangerTitle
+            }
+          >
+            Remove saved job
+          </Text>
+
+          <Text
+            style={
+              styles.dangerDescription
+            }
+          >
+            This removes the job from
+            Matches and Applications,
+            including its saved notes
+            and timeline.
+          </Text>
+
+          <Pressable
+            style={({ pressed }) => [
+              styles.removeButton,
+
+              pressed &&
+                styles.buttonPressed,
+            ]}
+            onPress={
+              confirmRemoveSavedJob
+            }
+          >
+            <Text
+              style={
+                styles.removeButtonText
+              }
+            >
+              Remove saved job
+            </Text>
+          </Pressable>
+        </View>
+      )}
     </ScrollView>
   );
 }
@@ -1477,5 +1615,53 @@ const styles =
     listingArrow: {
       color: '#A78BFA',
       fontSize: 18,
+    },
+
+    /*
+     * REMOVE SAVED JOB
+     */
+
+    dangerCard: {
+      backgroundColor:
+        '#171116',
+      borderWidth: 1,
+      borderColor:
+        '#4A252D',
+      borderRadius: 18,
+      padding: 17,
+      marginBottom: 15,
+    },
+
+    dangerTitle: {
+      color: '#F3A6B3',
+      fontSize: 16,
+      fontWeight: '800',
+    },
+
+    dangerDescription: {
+      color: '#917982',
+      fontSize: 11,
+      lineHeight: 17,
+      marginTop: 6,
+    },
+
+    removeButton: {
+      borderWidth: 1,
+      borderColor:
+        '#69303D',
+      backgroundColor:
+        '#351A22',
+      borderRadius: 11,
+      alignItems: 'center',
+      justifyContent:
+        'center',
+      paddingVertical: 12,
+      marginTop: 14,
+    },
+
+    removeButtonText: {
+      color: '#F2A0AF',
+      fontSize: 11,
+      fontWeight: '900',
     },
   });
