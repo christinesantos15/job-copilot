@@ -35,6 +35,8 @@ import {
   loadResumeProfile,
 } from '../storage/resumeProfileStorage';
 
+import ResumeMatchCard
+  from '../components/ResumeMatchCard';
 
 type TrackingUpdates =
   Partial<
@@ -856,16 +858,27 @@ export default function JobDetailsScreen({
 
       {/* APPLICATION COPILOT */}
 
+      {/* RESUME MATCH + APPLICATION COPILOT */}
+
       {hasLoadedResume ? (
-        <ApplicationCopilotCard
-          job={job}
-          preferences={
-            preferences
-          }
-          resume={
-            resumeProfile
-          }
-        />
+        <>
+          <ResumeMatchCard
+            job={job}
+            resume={
+              resumeProfile
+            }
+          />
+
+          <ApplicationCopilotCard
+            job={job}
+            preferences={
+              preferences
+            }
+            resume={
+              resumeProfile
+            }
+          />
+        </>
       ) : (
         <View
           style={
