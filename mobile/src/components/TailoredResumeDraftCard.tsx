@@ -1,8 +1,16 @@
 import {
+  useState,
+} from 'react';
+
+import {
+  Pressable,
   StyleSheet,
   Text,
   View,
 } from 'react-native';
+
+import * as Clipboard
+  from 'expo-clipboard';
 
 import {
   Job,
@@ -26,11 +34,162 @@ export default function TailoredResumeDraftCard({
   job,
   resume,
 }: TailoredResumeDraftCardProps) {
+  const [
+    copied,
+    setCopied,
+  ] = useState(false);
+
   const draft =
     generateTailoredResumeDraft(
       job,
       resume
     );
+
+  async function copyResumeDraft() {
+    const sections: string[] =
+      [];
+
+    if (draft.name.trim()) {
+      sections.push(
+        draft.name.trim()
+      );
+    }
+
+    if (draft.headline.trim()) {
+      sections.push(
+        draft.headline.trim()
+      );
+    }
+
+    if (draft.summary.trim()) {
+      sections.push(
+        `SUMMARY\n${draft.summary.trim()}`
+      );
+    }
+
+    if (
+      draft.skills.length >
+      0
+    ) {
+      sections.push(
+        `SKILLS\n${draft.skills.join(
+          ', '
+        )}`
+      );
+    }
+
+    if (
+      draft.experience.length >
+      0
+    ) {
+      const experienceText =
+        draft.experience
+          .map((item) => {
+            const heading = [
+              item.role,
+              item.company,
+            ]
+              .filter(Boolean)
+              .join(' — ');
+
+            if (
+              item.description.trim()
+            ) {
+              return (
+                `${heading}\n` +
+                `${item.description.trim()}`
+              );
+            }
+
+            return heading;
+          })
+          .join('\n\n');
+
+      sections.push(
+        `EXPERIENCE\n${experienceText}`
+      );
+    }
+
+    if (
+      draft.projects.length >
+      0
+    ) {
+      const projectText =
+        draft.projects
+          .map((project) => {
+            const technologies =
+              project.technologies
+                .length > 0
+                ? (
+                    `\nTechnologies: ` +
+                    project.technologies.join(
+                      ', '
+                    )
+                  )
+                : '';
+
+            const description =
+              project.description
+                .trim();
+
+            return [
+              project.name,
+              description,
+            ]
+              .filter(Boolean)
+              .join('\n') +
+              technologies;
+          })
+          .join('\n\n');
+
+      sections.push(
+        `PROJECTS\n${projectText}`
+      );
+    }
+
+    if (
+      draft.education.length >
+      0
+    ) {
+      const educationText =
+        draft.education
+          .map((item) =>
+            [
+              item.qualification,
+              item.school,
+            ]
+              .filter(Boolean)
+              .join(' — ')
+          )
+          .join('\n');
+
+      sections.push(
+        `EDUCATION\n${educationText}`
+      );
+    }
+
+    const resumeText =
+      sections.join(
+        '\n\n'
+      );
+
+    try {
+      await Clipboard.setStringAsync(
+        resumeText
+      );
+
+      setCopied(true);
+
+      setTimeout(() => {
+        setCopied(false);
+      }, 1800);
+    } catch (error) {
+      console.error(
+        'Failed to copy tailored resume:',
+        error
+      );
+    }
+  }
 
   return (
     <View style={styles.card}>
@@ -349,6 +508,31 @@ export default function TailoredResumeDraftCard({
           )
         )}
       </View>
+
+      <Pressable
+        style={({ pressed }) => [
+          styles.copyButton,
+
+          copied &&
+            styles.copyButtonSuccess,
+
+          pressed &&
+            styles.buttonPressed,
+        ]}
+        onPress={
+          copyResumeDraft
+        }
+      >
+        <Text
+          style={
+            styles.copyButtonText
+          }
+        >
+          {copied
+            ? 'Copied ✓'
+            : 'Copy Tailored Resume'}
+        </Text>
+      </Pressable>
     </View>
   );
 }
@@ -596,5 +780,38 @@ const styles =
       lineHeight: 15,
 
       marginTop: 3,
+    },
+
+    copyButton: {
+      alignItems: 'center',
+
+      justifyContent:
+        'center',
+
+      backgroundColor:
+        '#7657E8',
+
+      borderRadius: 11,
+
+      paddingVertical: 13,
+
+      marginTop: 14,
+    },
+
+    copyButtonSuccess: {
+      backgroundColor:
+        '#245A45',
+    },
+
+    copyButtonText: {
+      color: '#FFFFFF',
+
+      fontSize: 11,
+
+      fontWeight: '900',
+    },
+
+    buttonPressed: {
+      opacity: 0.72,
     },
   });

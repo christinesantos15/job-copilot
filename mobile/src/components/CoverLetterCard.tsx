@@ -1,9 +1,16 @@
 import {
+  useState,
+} from 'react';
+
+import {
   Pressable,
   StyleSheet,
   Text,
   View,
 } from 'react-native';
+
+import * as Clipboard
+  from 'expo-clipboard';
 
 import {
   Job,
@@ -34,12 +41,40 @@ export default function CoverLetterCard({
   preferences,
   resume,
 }: CoverLetterCardProps) {
+  const [
+    copied,
+    setCopied,
+  ] = useState(false);
+
   const draft =
     generateCoverLetter(
       job,
       resume,
       preferences
     );
+
+  async function copyCoverLetter() {
+    try {
+      await Clipboard.setStringAsync(
+        draft.fullText
+      );
+
+      setCopied(
+        true
+      );
+
+      setTimeout(() => {
+        setCopied(
+          false
+        );
+      }, 1800);
+    } catch (error) {
+      console.error(
+        'Failed to copy cover letter:',
+        error
+      );
+    }
+  }
 
   return (
     <View style={styles.card}>
@@ -124,19 +159,26 @@ export default function CoverLetterCard({
 
       <Pressable
         style={({ pressed }) => [
-          styles.copyPreviewButton,
+          styles.copyButton,
+
+          copied &&
+            styles.copyButtonSuccess,
 
           pressed &&
             styles.pressed,
         ]}
-        disabled
+        onPress={
+          copyCoverLetter
+        }
       >
         <Text
           style={
-            styles.copyPreviewText
+            styles.copyButtonText
           }
         >
-          Copy coming next
+          {copied
+            ? 'Copied ✓'
+            : 'Copy Cover Letter'}
         </Text>
       </Pressable>
     </View>
@@ -263,30 +305,33 @@ const styles =
       lineHeight: 16,
     },
 
-    copyPreviewButton: {
+    copyButton: {
       alignItems: 'center',
 
       justifyContent:
         'center',
 
       backgroundColor:
-        '#171E2F',
+        '#7657E8',
 
       borderRadius: 11,
 
-      paddingVertical: 12,
+      paddingVertical: 13,
 
       marginTop: 14,
-
-      opacity: 0.55,
     },
 
-    copyPreviewText: {
-      color: '#8B93A8',
+    copyButtonSuccess: {
+      backgroundColor:
+        '#245A45',
+    },
 
-      fontSize: 10,
+    copyButtonText: {
+      color: '#FFFFFF',
 
-      fontWeight: '800',
+      fontSize: 11,
+
+      fontWeight: '900',
     },
 
     pressed: {
