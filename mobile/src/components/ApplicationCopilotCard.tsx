@@ -13,35 +13,107 @@ import {
 } from '../profile/jobProfile';
 
 import {
+  ResumeProfile,
+} from '../profile/resumeProfile';
+
+import {
   generateApplicationCopilot,
 } from '../matching/applicationCopilot';
 
 type ApplicationCopilotCardProps = {
   job: Job;
-  profile: JobProfile;
+
+  preferences: JobProfile;
+
+  resume: ResumeProfile;
 };
 
 export default function ApplicationCopilotCard({
   job,
-  profile,
+  preferences,
+  resume,
 }: ApplicationCopilotCardProps) {
   const copilot =
     generateApplicationCopilot(
       job,
-      profile
+      preferences,
+      resume
     );
+
+  function renderRows(
+    items: string[],
+    symbol: string,
+    symbolStyle:
+      | 'positive'
+      | 'warning'
+      | 'evidence'
+      | 'emphasis'
+  ) {
+    return items.map(
+      (item, index) => (
+        <View
+          key={`${symbolStyle}-${index}`}
+          style={styles.row}
+        >
+          <Text
+            style={[
+              styles.bullet,
+
+              symbolStyle ===
+                'positive' &&
+                styles.positiveBullet,
+
+              symbolStyle ===
+                'warning' &&
+                styles.warningBullet,
+
+              symbolStyle ===
+                'evidence' &&
+                styles.evidenceBullet,
+
+              symbolStyle ===
+                'emphasis' &&
+                styles.emphasisBullet,
+            ]}
+          >
+            {symbol}
+          </Text>
+
+          <Text
+            style={
+              styles.rowText
+            }
+          >
+            {item}
+          </Text>
+        </View>
+      )
+    );
+  }
 
   return (
     <View style={styles.card}>
       {/* HEADER */}
 
       <View style={styles.header}>
-        <View style={styles.headerText}>
-          <Text style={styles.eyebrow}>
+        <View
+          style={
+            styles.headerText
+          }
+        >
+          <Text
+            style={
+              styles.eyebrow
+            }
+          >
             JOB COPILOT
           </Text>
 
-          <Text style={styles.title}>
+          <Text
+            style={
+              styles.title
+            }
+          >
             Application Copilot
           </Text>
         </View>
@@ -69,9 +141,9 @@ export default function ApplicationCopilotCard({
           styles.description
         }
       >
-        Personalized using this
-        listing and your current Job
-        Profile.
+        Compares this listing with
+        your Job Preferences and
+        Resume Profile.
       </Text>
 
       {/* STRENGTHS */}
@@ -85,29 +157,60 @@ export default function ApplicationCopilotCard({
           Your strengths
         </Text>
 
-        {copilot.strengths.map(
-          (item, index) => (
-            <View
-              key={`strength-${index}`}
-              style={styles.row}
-            >
-              <Text
-                style={
-                  styles.positiveBullet
-                }
-              >
-                ✓
-              </Text>
+        {renderRows(
+          copilot.strengths,
+          '✓',
+          'positive'
+        )}
+      </View>
 
-              <Text
-                style={
-                  styles.rowText
-                }
-              >
-                {item}
-              </Text>
-            </View>
-          )
+      <View style={styles.divider} />
+
+      {/* EVIDENCE */}
+
+      <View style={styles.section}>
+        <Text
+          style={
+            styles.sectionTitle
+          }
+        >
+          Resume evidence
+        </Text>
+
+        <Text
+          style={
+            styles.sectionDescription
+          }
+        >
+          Projects, experience and
+          education you may be able to
+          use as evidence.
+        </Text>
+
+        {renderRows(
+          copilot.evidence,
+          '◆',
+          'evidence'
+        )}
+      </View>
+
+      <View style={styles.divider} />
+
+      {/* EMPHASIZE */}
+
+      <View style={styles.section}>
+        <Text
+          style={
+            styles.sectionTitle
+          }
+        >
+          What to emphasize
+        </Text>
+
+        {renderRows(
+          copilot.emphasize,
+          '→',
+          'emphasis'
         )}
       </View>
 
@@ -124,29 +227,10 @@ export default function ApplicationCopilotCard({
           Gaps to prepare
         </Text>
 
-        {copilot.gaps.map(
-          (item, index) => (
-            <View
-              key={`gap-${index}`}
-              style={styles.row}
-            >
-              <Text
-                style={
-                  styles.warningBullet
-                }
-              >
-                •
-              </Text>
-
-              <Text
-                style={
-                  styles.rowText
-                }
-              >
-                {item}
-              </Text>
-            </View>
-          )
+        {renderRows(
+          copilot.gaps,
+          '•',
+          'warning'
         )}
       </View>
 
@@ -213,7 +297,9 @@ export default function ApplicationCopilotCard({
           (item, index) => (
             <View
               key={`check-${index}`}
-              style={styles.row}
+              style={
+                styles.row
+              }
             >
               <Text
                 style={
@@ -236,10 +322,9 @@ export default function ApplicationCopilotCard({
       </View>
 
       <Text style={styles.footer}>
-        Generated locally from the job
-        listing and your saved Job
-        Profile. No AI API is required
-        for this version.
+        Generated locally from the
+        job listing, Job Preferences
+        and saved Resume Profile.
       </Text>
     </View>
   );
@@ -342,6 +427,18 @@ const styles =
       marginBottom: 3,
     },
 
+    sectionDescription: {
+      color: '#646D82',
+
+      fontSize: 9,
+
+      lineHeight: 14,
+
+      marginTop: 4,
+
+      marginBottom: 3,
+    },
+
     row: {
       flexDirection: 'row',
 
@@ -361,26 +458,40 @@ const styles =
       lineHeight: 17,
     },
 
+    bullet: {
+      width: 23,
+
+      fontWeight: '900',
+    },
+
     positiveBullet: {
       color: '#72D6A7',
 
-      width: 23,
-
       fontSize: 11,
-
-      fontWeight: '900',
     },
 
     warningBullet: {
       color: '#D6B75B',
 
-      width: 23,
-
       fontSize: 17,
 
       lineHeight: 17,
+    },
 
-      fontWeight: '900',
+    evidenceBullet: {
+      color: '#72A9E8',
+
+      fontSize: 10,
+
+      lineHeight: 17,
+    },
+
+    emphasisBullet: {
+      color: '#A78BFA',
+
+      fontSize: 13,
+
+      lineHeight: 17,
     },
 
     numberBullet: {

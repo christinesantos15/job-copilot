@@ -1,13 +1,28 @@
-import { Job } from '../types/Job';
-
 import {
   JobProfile,
 } from '../profile/jobProfile';
 
+import {
+  ResumeProfile,
+  ResumeProject,
+  ResumeExperience,
+} from '../profile/resumeProfile';
+
+import {
+  Job,
+} from '../types/Job';
+
 export type ApplicationCopilotResult = {
   strengths: string[];
+
+  evidence: string[];
+
   gaps: string[];
+
+  emphasize: string[];
+
   interviewQuestions: string[];
+
   checklist: string[];
 };
 
@@ -20,12 +35,12 @@ function normalize(
     .trim();
 }
 
-function hasSkill(
+function containsTerm(
   text: string,
-  skill: string
+  term: string
 ) {
   return text.includes(
-    normalize(skill)
+    normalize(term)
   );
 }
 
@@ -35,28 +50,153 @@ function includesAny(
 ) {
   return values.some(
     (value) =>
-      text.includes(
-        normalize(value)
+      containsTerm(
+        text,
+        value
       )
+  );
+}
+
+function unique(
+  values: string[]
+) {
+  return Array.from(
+    new Set(values)
+  );
+}
+
+function getJobText(
+  job: Job
+) {
+  return normalize(
+    [
+      job.title,
+      job.description,
+      ...(job.skills ?? []),
+    ].join(' ')
+  );
+}
+
+function getResumeText(
+  resume: ResumeProfile
+) {
+  const experienceText =
+    resume.experience
+      .map(
+        (experience) =>
+          [
+            experience.role,
+            experience.company,
+            experience.description,
+          ].join(' ')
+      )
+      .join(' ');
+
+  const projectText =
+    resume.projects
+      .map(
+        (project) =>
+          [
+            project.name,
+            project.description,
+            ...project.technologies,
+          ].join(' ')
+      )
+      .join(' ');
+
+  const educationText =
+    resume.education
+      .map(
+        (education) =>
+          [
+            education.school,
+            education.qualification,
+          ].join(' ')
+      )
+      .join(' ');
+
+  return normalize(
+    [
+      resume.headline,
+      resume.summary,
+      ...resume.skills,
+      experienceText,
+      projectText,
+      educationText,
+    ].join(' ')
+  );
+}
+
+function projectMatchesJob(
+  project: ResumeProject,
+  jobText: string
+) {
+  const projectTerms = [
+    project.name,
+    ...project.technologies,
+  ]
+    .map(normalize)
+    .filter(
+      (term) =>
+        term.length >= 3
+    );
+
+  return projectTerms.some(
+    (term) =>
+      jobText.includes(term)
+  );
+}
+
+function experienceMatchesJob(
+  experience: ResumeExperience,
+  jobText: string
+) {
+  const role =
+    normalize(
+      experience.role
+    );
+
+  if (
+    role.length >= 3 &&
+    jobText.includes(role)
+  ) {
+    return true;
+  }
+
+  const words =
+    normalize(
+      experience.description
+    )
+      .split(' ')
+      .filter(
+        (word) =>
+          word.length >= 5
+      );
+
+  return words.some(
+    (word) =>
+      jobText.includes(word)
   );
 }
 
 export function generateApplicationCopilot(
   job: Job,
-  profile: JobProfile
+  preferences: JobProfile,
+  resume: ResumeProfile
 ): ApplicationCopilotResult {
   const strengths: string[] = [];
+
+  const evidence: string[] = [];
+
   const gaps: string[] = [];
 
-  /*
-   * NORMALIZED PROFILE
-   */
+  const emphasize: string[] = [];
 
-  const profileSkills =
-    profile.preferredSkills.map(
-      (skill) =>
-        normalize(skill)
-    );
+  const jobText =
+    getJobText(job);
+
+  const resumeText =
+    getResumeText(resume);
 
   const jobTitle =
     normalize(job.title);
@@ -64,17 +204,8 @@ export function generateApplicationCopilot(
   const jobLocation =
     normalize(job.location);
 
-  const jobText =
-    normalize(
-      [
-        job.title,
-        job.description,
-        ...(job.skills ?? []),
-      ].join(' ')
-    );
-
   /*
-   * OVERALL MATCH
+   * MATCH SCORE
    */
 
   if (
@@ -82,29 +213,27 @@ export function generateApplicationCopilot(
     job.matchScore >= 70
   ) {
     strengths.push(
-      `Strong overall profile match (${job.matchScore}%).`
+      `Strong overall job-preference match (${job.matchScore}%).`
     );
   } else if (
     job.matchScore !== undefined &&
     job.matchScore >= 50
   ) {
     strengths.push(
-      `Your profile has a solid ${job.matchScore}% match with this role.`
-    );
-  } else if (
-    job.matchScore !== undefined
-  ) {
-    strengths.push(
-      `Current profile match: ${job.matchScore}%. Focus on the strongest matching requirements when applying.`
+      `Solid job-preference match (${job.matchScore}%).`
     );
   }
 
   /*
-   * LOCATION MATCH
+   * PREFERENCE ALIGNMENT
+   *
+   * Preferences tell us what the
+   * user wants, not what they can
+   * necessarily prove on a resume.
    */
 
   const matchedLocation =
-    profile.preferredLocations.find(
+    preferences.preferredLocations.find(
       (location) =>
         jobLocation.includes(
           normalize(location)
@@ -117,12 +246,8 @@ export function generateApplicationCopilot(
     );
   }
 
-  /*
-   * TARGET ROLE MATCH
-   */
-
   const matchedRole =
-    profile.targetRoles.find(
+    preferences.targetRoles.find(
       (role) =>
         jobTitle.includes(
           normalize(role)
@@ -131,16 +256,12 @@ export function generateApplicationCopilot(
 
   if (matchedRole) {
     strengths.push(
-      `The role aligns with your ${matchedRole} target.`
+      `This position aligns with your ${matchedRole} target.`
     );
   }
 
-  /*
-   * LEVEL MATCH
-   */
-
   const matchedLevel =
-    profile.preferredLevels.find(
+    preferences.preferredLevels.find(
       (level) =>
         jobTitle.includes(
           normalize(level)
@@ -154,73 +275,134 @@ export function generateApplicationCopilot(
   }
 
   /*
-   * SKILL MATCHES
+   * RESUME SKILLS
+   *
+   * These ARE evidence because they
+   * come from Resume Profile.
    */
 
-  const matchedSkills =
-    profileSkills.filter(
-      (skill) =>
-        hasSkill(
-          jobText,
-          skill
-        )
+  const resumeSkills =
+    unique(
+      resume.skills
+        .map(normalize)
+        .filter(Boolean)
     );
 
-  matchedSkills
-    .slice(0, 5)
+  const matchedResumeSkills =
+    resumeSkills.filter(
+      (skill) =>
+        jobText.includes(skill)
+    );
+
+  matchedResumeSkills
+    .slice(0, 6)
     .forEach(
       (skill) => {
         strengths.push(
-          `${skill} appears relevant to this role.`
+          `${skill} is listed in your resume and appears relevant to this role.`
         );
       }
     );
 
   /*
-   * EXISTING MATCH REASONS
+   * PROJECT EVIDENCE
    */
 
-  for (
-    const reason of
-    job.matchReasons ?? []
-  ) {
-    if (
-      strengths.length >= 7
-    ) {
-      break;
-    }
-
-    const alreadyExists =
-      strengths.some(
-        (item) =>
-          normalize(item) ===
-          normalize(reason)
-      );
-
-    if (!alreadyExists) {
-      strengths.push(reason);
-    }
-  }
-
-  if (
-    strengths.length === 0
-  ) {
-    strengths.push(
-      'Your background has transferable skills worth highlighting for this role.'
+  const relevantProjects =
+    resume.projects.filter(
+      (project) =>
+        projectMatchesJob(
+          project,
+          jobText
+        )
     );
-  }
+
+  relevantProjects
+    .slice(0, 3)
+    .forEach(
+      (project) => {
+        evidence.push(
+          `${project.name}: use this project as evidence of relevant technical experience.`
+        );
+
+        emphasize.push(
+          `Explain ${project.name}, what you built, your contribution, and the technical decisions you made.`
+        );
+      }
+    );
 
   /*
-   * POSSIBLE TECHNOLOGIES
+   * EXPERIENCE EVIDENCE
+   */
+
+  const relevantExperience =
+    resume.experience.filter(
+      (experience) =>
+        experienceMatchesJob(
+          experience,
+          jobText
+        )
+    );
+
+  relevantExperience
+    .slice(0, 3)
+    .forEach(
+      (experience) => {
+        const label =
+          [
+            experience.role,
+            experience.company,
+          ]
+            .filter(Boolean)
+            .join(' at ');
+
+        evidence.push(
+          `${label || 'Your experience'} contains transferable experience for this listing.`
+        );
+
+        emphasize.push(
+          `Connect your ${label || 'previous experience'} to the responsibilities in this role.`
+        );
+      }
+    );
+
+  /*
+   * EDUCATION
+   */
+
+  resume.education
+    .slice(0, 2)
+    .forEach(
+      (education) => {
+        const qualification =
+          normalize(
+            education.qualification
+          );
+
+        if (
+          qualification.includes(
+            'computer'
+          ) ||
+          qualification.includes(
+            'software'
+          ) ||
+          qualification.includes(
+            'information technology'
+          )
+        ) {
+          evidence.push(
+            `${education.qualification} from ${education.school} supports your technical background.`
+          );
+        }
+      }
+    );
+
+  /*
+   * TECHNOLOGY GAP DETECTION
    *
-   * These are technologies we know
-   * how to detect from listings.
-   *
-   * A technology is only treated as a
-   * gap when:
-   *
-   * 1. the listing mentions it
-   * 2. it is NOT in preferredSkills
+   * A job technology is considered
+   * supported only when it appears
+   * somewhere in Resume Profile.
    */
 
   const technologies = [
@@ -232,6 +414,7 @@ export function generateApplicationCopilot(
     'javascript',
     'node.js',
     'nodejs',
+
     'python',
     'fastapi',
     'django',
@@ -279,136 +462,112 @@ export function generateApplicationCopilot(
     'css',
   ];
 
-  const possibleGaps =
-    technologies.filter(
-      (technology) => {
-        const normalizedTechnology =
-          normalize(
+  const aliases: Record<
+    string,
+    string[]
+  > = {
+    'next.js': [
+      'next.js',
+      'nextjs',
+    ],
+
+    'node.js': [
+      'node.js',
+      'nodejs',
+    ],
+
+    go: [
+      'go',
+      'golang',
+    ],
+  };
+
+  function canonicalTechnology(
+    technology: string
+  ) {
+    return (
+      Object.entries(
+        aliases
+      ).find(
+        ([, values]) =>
+          values.includes(
             technology
-          );
+          )
+      )?.[0] ??
+      technology
+    );
+  }
 
-        const listingRequires =
-          hasSkill(
-            jobText,
-            normalizedTechnology
-          );
-
-        const userHasSkill =
-          profileSkills.some(
-            (profileSkill) =>
-              profileSkill ===
-                normalizedTechnology ||
-              profileSkill.includes(
-                normalizedTechnology
-              ) ||
-              normalizedTechnology.includes(
-                profileSkill
-              )
-          );
-
-        return (
-          listingRequires &&
-          !userHasSkill
-        );
-      }
+  const detectedTechnologies =
+    technologies.filter(
+      (technology) =>
+        containsTerm(
+          jobText,
+          technology
+        )
     );
 
-  /*
-   * REMOVE DUPLICATE ALIASES
-   */
-
-  const uniqueGaps =
-    possibleGaps.filter(
+  const uniqueTechnologies =
+    detectedTechnologies.filter(
       (
         technology,
         index,
         array
       ) => {
-        const aliases: Record<
-          string,
-          string[]
-        > = {
-          'next.js': [
-            'next.js',
-            'nextjs',
-          ],
-
-          'node.js': [
-            'node.js',
-            'nodejs',
-          ],
-
-          go: [
-            'go',
-            'golang',
-          ],
-        };
-
         const canonical =
-          Object.entries(
-            aliases
-          ).find(
-            ([, values]) =>
-              values.includes(
-                technology
-              )
-          )?.[0] ??
-          technology;
+          canonicalTechnology(
+            technology
+          );
 
         return (
           array.findIndex(
-            (candidate) => {
-              const candidateCanonical =
-                Object.entries(
-                  aliases
-                ).find(
-                  ([, values]) =>
-                    values.includes(
-                      candidate
-                    )
-                )?.[0] ??
-                candidate;
-
-              return (
-                candidateCanonical ===
-                canonical
-              );
-            }
+            (candidate) =>
+              canonicalTechnology(
+                candidate
+              ) === canonical
           ) === index
         );
       }
     );
 
-  uniqueGaps
-    .slice(0, 5)
-    .forEach(
-      (skill) => {
-        gaps.push(
-          `Review ${skill} before applying or interviewing.`
-        );
-      }
-    );
+  for (
+    const technology of
+    uniqueTechnologies
+  ) {
+    const canonical =
+      canonicalTechnology(
+        technology
+      );
+
+    const aliasesForTechnology =
+      aliases[canonical] ?? [
+        canonical,
+      ];
+
+    const resumeSupports =
+      aliasesForTechnology.some(
+        (alias) =>
+          containsTerm(
+            resumeText,
+            alias
+          )
+      );
+
+    if (!resumeSupports) {
+      gaps.push(
+        `${canonical} appears in the listing but is not currently supported by your Resume Profile.`
+      );
+    }
+  }
 
   /*
-   * SENIORITY WARNING
+   * SENIORITY
    */
-
-  const seniorTerms =
-    profile.seniorLevels.length >
-    0
-      ? profile.seniorLevels
-      : [
-          'senior',
-          'staff',
-          'principal',
-          'lead',
-          'manager',
-        ];
 
   if (
     includesAny(
       jobTitle,
-      seniorTerms
+      preferences.seniorLevels
     )
   ) {
     gaps.push(
@@ -417,32 +576,96 @@ export function generateApplicationCopilot(
   }
 
   /*
-   * SPECIALIZATION WARNING
+   * SPECIALIZATION
    */
 
   const unrelatedSpecialization =
-    profile.unrelatedSpecializations.find(
-      (specialization) =>
-        jobText.includes(
-          normalize(
+    preferences
+      .unrelatedSpecializations
+      .find(
+        (specialization) =>
+          containsTerm(
+            jobText,
             specialization
           )
-        )
-    );
+      );
 
   if (
     unrelatedSpecialization
   ) {
     gaps.push(
-      `This role includes ${unrelatedSpecialization}, which is outside your current target specialization.`
+      `The listing includes ${unrelatedSpecialization}, which is outside your current target specialization.`
+    );
+  }
+
+  /*
+   * WHAT TO EMPHASIZE
+   */
+
+  if (
+    matchedResumeSkills.length >
+    0
+  ) {
+    emphasize.unshift(
+      `Lead with your matching skills: ${matchedResumeSkills
+        .slice(0, 5)
+        .join(', ')}.`
     );
   }
 
   if (
-    gaps.length === 0
+    relevantProjects.length ===
+      0 &&
+    resume.projects.length > 0
   ) {
+    emphasize.push(
+      'Choose the project that best demonstrates problem solving, software design, and your ability to learn new technologies.'
+    );
+  }
+
+  if (
+    relevantExperience.length ===
+      0 &&
+    resume.experience.length > 0
+  ) {
+    emphasize.push(
+      'Frame previous work experience around transferable skills such as teamwork, communication, responsibility, and problem solving.'
+    );
+  }
+
+  if (
+    emphasize.length === 0
+  ) {
+    emphasize.push(
+      'Complete more of your Resume Profile so Job Copilot can identify specific evidence to emphasize.'
+    );
+  }
+
+  /*
+   * EMPTY RESUME
+   */
+
+  const hasResumeContent =
+    resume.skills.length > 0 ||
+    resume.projects.length > 0 ||
+    resume.experience.length > 0 ||
+    resume.education.length > 0;
+
+  if (!hasResumeContent) {
+    gaps.unshift(
+      'Your Resume Profile is empty. Add your actual skills, projects, experience, and education for more accurate analysis.'
+    );
+  }
+
+  if (gaps.length === 0) {
     gaps.push(
-      'No obvious technical gap detected from the available listing data and your current profile.'
+      'No obvious technical gap was detected from the available listing and your Resume Profile.'
+    );
+  }
+
+  if (evidence.length === 0) {
+    evidence.push(
+      'No strong project, experience, or education evidence was automatically detected for this listing yet.'
     );
   }
 
@@ -454,16 +677,24 @@ export function generateApplicationCopilot(
     [
       `Why are you interested in the ${job.title} role at ${job.company}?`,
 
-      'Tell me about a project that best demonstrates your software development skills.',
+      'Which experience or project best demonstrates that you can succeed in this role?',
 
-      'Describe a technical problem you struggled with and how you solved it.',
+      'Describe a difficult technical problem you encountered and how you approached it.',
     ];
 
   if (
-    matchedSkills.includes(
+    relevantProjects.length > 0
+  ) {
+    interviewQuestions.push(
+      `Walk me through ${relevantProjects[0].name}. What did you personally build and what would you improve?`
+    );
+  }
+
+  if (
+    matchedResumeSkills.includes(
       'react'
     ) ||
-    matchedSkills.includes(
+    matchedResumeSkills.includes(
       'react native'
     )
   ) {
@@ -473,27 +704,17 @@ export function generateApplicationCopilot(
   }
 
   if (
-    matchedSkills.includes(
+    matchedResumeSkills.includes(
       'typescript'
     )
   ) {
     interviewQuestions.push(
-      'Why would you use TypeScript instead of plain JavaScript in a production project?'
+      'Why would you use TypeScript instead of plain JavaScript in a production application?'
     );
   }
 
   if (
-    matchedSkills.includes(
-      'javascript'
-    )
-  ) {
-    interviewQuestions.push(
-      'Explain an important JavaScript concept you have used in one of your projects.'
-    );
-  }
-
-  if (
-    matchedSkills.includes(
+    matchedResumeSkills.includes(
       'python'
     )
   ) {
@@ -503,20 +724,10 @@ export function generateApplicationCopilot(
   }
 
   if (
-    matchedSkills.includes(
-      'fastapi'
-    )
-  ) {
-    interviewQuestions.push(
-      'How would you structure a FastAPI backend and handle validation or errors?'
-    );
-  }
-
-  if (
-    matchedSkills.includes(
+    matchedResumeSkills.includes(
       'postgresql'
     ) ||
-    matchedSkills.includes(
+    matchedResumeSkills.includes(
       'sql'
     )
   ) {
@@ -526,7 +737,7 @@ export function generateApplicationCopilot(
   }
 
   if (
-    matchedSkills.includes(
+    matchedResumeSkills.includes(
       'docker'
     )
   ) {
@@ -535,29 +746,20 @@ export function generateApplicationCopilot(
     );
   }
 
-  if (
-    matchedSkills.includes(
-      'rest api'
-    ) ||
-    jobText.includes(
-      'api'
-    )
-  ) {
-    interviewQuestions.push(
-      'Explain how you would design and consume a REST API.'
-    );
-  }
-
   /*
    * CHECKLIST
    */
 
   const checklist = [
-    'Read the full job description again.',
+    'Read the complete job description again.',
 
-    'Tailor your resume to the strongest matching requirements.',
+    'Compare the listing against your Resume Profile.',
 
-    'Choose 2–3 projects or experiences you can explain clearly.',
+    'Tailor your resume around supported skills and evidence.',
+
+    'Do not claim technologies you cannot explain or demonstrate.',
+
+    'Choose 2–3 experiences or projects you can discuss clearly.',
 
     `Research ${job.company} and its products.`,
 
@@ -565,31 +767,34 @@ export function generateApplicationCopilot(
 
     'Review the gaps identified by Application Copilot.',
 
-    'Open the original listing and verify it is still active.',
+    'Verify the original listing is still active.',
 
-    'Apply and update the application status in Job Copilot.',
+    'Apply and update your application status in Job Copilot.',
 
     'Set a follow-up date after applying.',
   ];
 
   return {
     strengths:
-      strengths.slice(
-        0,
-        7
-      ),
+      unique(strengths)
+        .slice(0, 7),
+
+    evidence:
+      unique(evidence)
+        .slice(0, 6),
 
     gaps:
-      gaps.slice(
-        0,
-        5
-      ),
+      unique(gaps)
+        .slice(0, 6),
+
+    emphasize:
+      unique(emphasize)
+        .slice(0, 6),
 
     interviewQuestions:
-      interviewQuestions.slice(
-        0,
-        6
-      ),
+      unique(
+        interviewQuestions
+      ).slice(0, 6),
 
     checklist,
   };

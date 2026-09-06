@@ -26,6 +26,15 @@ import {
 import ApplicationCopilotCard
 from '../components/ApplicationCopilotCard';
 
+import {
+  ResumeProfile,
+  defaultResumeProfile,
+} from '../profile/resumeProfile';
+
+import {
+  loadResumeProfile,
+} from '../storage/resumeProfileStorage';
+
 
 type TrackingUpdates =
   Partial<
@@ -110,6 +119,17 @@ export default function JobDetailsScreen({
   onStatusChange,
   onRemoveSavedJob,
 }: JobDetailsScreenProps) {
+  const [
+    resumeProfile,
+    setResumeProfile,
+  ] = useState<ResumeProfile>(
+    defaultResumeProfile
+  );
+
+  const [
+    hasLoadedResume,
+    setHasLoadedResume,
+  ] = useState(false);
   const [
     notes,
     setNotes,
@@ -222,6 +242,49 @@ export default function JobDetailsScreen({
     job.interviewDate,
     job.followUpDate,
   ]);
+
+  /*
+   * LOAD RESUME PROFILE
+   * FOR APPLICATION COPILOT
+   */
+
+  useEffect(() => {
+    let isMounted = true;
+
+    async function loadResume() {
+      try {
+        const savedResume =
+          await loadResumeProfile();
+
+        if (isMounted) {
+          setResumeProfile(
+            savedResume
+          );
+        }
+      } catch (error) {
+        console.error(
+          'Failed to load Resume Profile for Application Copilot:',
+          error
+        );
+      } finally {
+        if (isMounted) {
+          setHasLoadedResume(
+            true
+          );
+        }
+      }
+    }
+
+    setHasLoadedResume(
+      false
+    );
+
+    loadResume();
+
+    return () => {
+      isMounted = false;
+    };
+  }, [job.id]);
 
   const currentStatus =
     job.applicationStatus ??
@@ -792,10 +855,32 @@ export default function JobDetailsScreen({
         )}
 
       {/* APPLICATION COPILOT */}
-      <ApplicationCopilotCard
-        job={job}
-        profile={preferences}
-      />
+
+      {hasLoadedResume ? (
+        <ApplicationCopilotCard
+          job={job}
+          preferences={
+            preferences
+          }
+          resume={
+            resumeProfile
+          }
+        />
+      ) : (
+        <View
+          style={
+            styles.copilotLoadingCard
+          }
+        >
+          <Text
+            style={
+              styles.copilotLoadingText
+            }
+          >
+            Loading Resume Profile...
+          </Text>
+        </View>
+      )}
 
       {/* APPLICATION TIMELINE */}
 
@@ -1432,6 +1517,32 @@ const styles =
       color: '#A5ADBE',
       fontSize: 12,
       lineHeight: 18,
+    },
+
+    /*
+     * APPLICATION COPILOT
+     */
+
+    copilotLoadingCard: {
+      backgroundColor:
+        '#111727',
+
+      borderWidth: 1,
+
+      borderColor:
+        '#47377A',
+
+      borderRadius: 18,
+
+      padding: 17,
+
+      marginBottom: 15,
+    },
+
+    copilotLoadingText: {
+      color: '#7F879B',
+
+      fontSize: 11,
     },
 
     /*
