@@ -24,9 +24,12 @@ import {
   generateTailoredResumeDraft,
 } from '../matching/tailoredResumeDraft';
 
+import {
+  exportResumePdf,
+} from '../export/resumeExporter';
+
 type TailoredResumeDraftCardProps = {
   job: Job;
-
   resume: ResumeProfile;
 };
 
@@ -39,6 +42,11 @@ export default function TailoredResumeDraftCard({
     setCopied,
   ] = useState(false);
 
+  const [
+    exporting,
+    setExporting,
+  ] = useState(false);
+
   const draft =
     generateTailoredResumeDraft(
       job,
@@ -46,8 +54,7 @@ export default function TailoredResumeDraftCard({
     );
 
   async function copyResumeDraft() {
-    const sections: string[] =
-      [];
+    const sections: string[] = [];
 
     if (draft.name.trim()) {
       sections.push(
@@ -61,30 +68,55 @@ export default function TailoredResumeDraftCard({
       );
     }
 
+    const contactLine = [
+      resume.location,
+      resume.phone,
+      resume.email,
+      resume.linkedinUrl,
+      resume.githubUrl,
+      resume.portfolioUrl,
+    ]
+      .map((value) =>
+        value.trim()
+      )
+      .filter(Boolean)
+      .join(' | ');
+
+    if (contactLine) {
+      sections.push(
+        contactLine
+      );
+    }
+
     if (draft.summary.trim()) {
       sections.push(
-        `SUMMARY\n${draft.summary.trim()}`
+        `PROFILE\n${draft.summary.trim()}`
       );
     }
 
     if (
-      draft.skills.length >
-      0
+      draft.skills.length > 0
     ) {
       sections.push(
-        `SKILLS\n${draft.skills.join(
+        `TECHNICAL SKILLS\n${draft.skills.join(
           ', '
         )}`
       );
     }
 
     if (
-      draft.experience.length >
-      0
+      draft.experience.length > 0
     ) {
       const experienceText =
         draft.experience
           .map((item) => {
+            const original =
+              resume.experience.find(
+                (experience) =>
+                  experience.id ===
+                  item.id
+              );
+
             const heading = [
               item.role,
               item.company,
@@ -92,53 +124,72 @@ export default function TailoredResumeDraftCard({
               .filter(Boolean)
               .join(' — ');
 
-            if (
-              item.description.trim()
-            ) {
-              return (
-                `${heading}\n` +
-                `${item.description.trim()}`
-              );
-            }
+            const meta = [
+              original?.startDate,
+              original?.endDate,
+            ]
+              .filter(Boolean)
+              .join(' – ');
 
-            return heading;
+            const metaLine = [
+              meta,
+              original?.location,
+            ]
+              .filter(Boolean)
+              .join(' | ');
+
+            return [
+              heading,
+              metaLine,
+              item.description.trim(),
+            ]
+              .filter(Boolean)
+              .join('\n');
           })
           .join('\n\n');
 
       sections.push(
-        `EXPERIENCE\n${experienceText}`
+        `PROFESSIONAL EXPERIENCE\n${experienceText}`
       );
     }
 
     if (
-      draft.projects.length >
-      0
+      draft.projects.length > 0
     ) {
       const projectText =
         draft.projects
           .map((project) => {
+            const original =
+              resume.projects.find(
+                (item) =>
+                  item.id ===
+                  project.id
+              );
+
             const technologies =
               project.technologies
                 .length > 0
                 ? (
-                    `\nTechnologies: ` +
+                    `Technologies: ` +
                     project.technologies.join(
                       ', '
                     )
                   )
                 : '';
 
-            const description =
-              project.description
-                .trim();
+            const link =
+              original?.link.trim()
+                ? `Repository: ${original.link.trim()}`
+                : '';
 
             return [
               project.name,
-              description,
+              project.description.trim(),
+              technologies,
+              link,
             ]
               .filter(Boolean)
-              .join('\n') +
-              technologies;
+              .join('\n');
           })
           .join('\n\n');
 
@@ -148,20 +199,38 @@ export default function TailoredResumeDraftCard({
     }
 
     if (
-      draft.education.length >
-      0
+      draft.education.length > 0
     ) {
       const educationText =
         draft.education
-          .map((item) =>
-            [
-              item.qualification,
-              item.school,
+          .map((item) => {
+            const dates = [
+              item.startDate,
+              item.endDate,
             ]
               .filter(Boolean)
-              .join(' — ')
-          )
-          .join('\n');
+              .join(' – ');
+
+            const meta = [
+              dates,
+              item.location,
+            ]
+              .filter(Boolean)
+              .join(' | ');
+
+            return [
+              [
+                item.qualification,
+                item.school,
+              ]
+                .filter(Boolean)
+                .join(' — '),
+              meta,
+            ]
+              .filter(Boolean)
+              .join('\n');
+          })
+          .join('\n\n');
 
       sections.push(
         `EDUCATION\n${educationText}`
@@ -169,9 +238,7 @@ export default function TailoredResumeDraftCard({
     }
 
     const resumeText =
-      sections.join(
-        '\n\n'
-      );
+      sections.join('\n\n');
 
     try {
       await Clipboard.setStringAsync(
@@ -188,6 +255,28 @@ export default function TailoredResumeDraftCard({
         'Failed to copy tailored resume:',
         error
       );
+    }
+  }
+
+  async function handleExportResume() {
+    if (exporting) {
+      return;
+    }
+
+    try {
+      setExporting(true);
+
+      await exportResumePdf(
+        job,
+        resume
+      );
+    } catch (error) {
+      console.error(
+        'Failed to export resume:',
+        error
+      );
+    } finally {
+      setExporting(false);
     }
   }
 
@@ -234,10 +323,66 @@ export default function TailoredResumeDraftCard({
           {draft.headline}
         </Text>
 
+        {[
+          resume.location,
+          resume.phone,
+          resume.email,
+        ]
+          .map((value) =>
+            value.trim()
+          )
+          .filter(Boolean)
+          .length > 0 && (
+          <Text
+            style={
+              styles.contactText
+            }
+          >
+            {[
+              resume.location,
+              resume.phone,
+              resume.email,
+            ]
+              .map((value) =>
+                value.trim()
+              )
+              .filter(Boolean)
+              .join(' • ')}
+          </Text>
+        )}
+
+        {[
+          resume.linkedinUrl,
+          resume.githubUrl,
+          resume.portfolioUrl,
+        ]
+          .map((value) =>
+            value.trim()
+          )
+          .filter(Boolean)
+          .length > 0 && (
+          <Text
+            style={
+              styles.linkText
+            }
+          >
+            {[
+              resume.linkedinUrl,
+              resume.githubUrl,
+              resume.portfolioUrl,
+            ]
+              .map((value) =>
+                value.trim()
+              )
+              .filter(Boolean)
+              .join(' • ')}
+          </Text>
+        )}
+
         {!!draft.summary && (
           <>
             <SectionTitle
-              title="Summary"
+              title="Profile"
             />
 
             <Text
@@ -254,7 +399,7 @@ export default function TailoredResumeDraftCard({
           0 && (
           <>
             <SectionTitle
-              title="Skills"
+              title="Technical Skills"
             />
 
             <View
@@ -284,6 +429,113 @@ export default function TailoredResumeDraftCard({
           </>
         )}
 
+        {draft.experience.length >
+          0 && (
+          <>
+            <SectionTitle
+              title="Professional Experience"
+            />
+
+            {draft.experience.map(
+              (experience) => {
+                const original =
+                  resume.experience.find(
+                    (item) =>
+                      item.id ===
+                      experience.id
+                  );
+
+                const dates = [
+                  original?.startDate,
+                  original?.endDate,
+                ]
+                  .filter(Boolean)
+                  .join(' – ');
+
+                const meta = [
+                  dates,
+                  original?.location,
+                ]
+                  .filter(Boolean)
+                  .join(' | ');
+
+                return (
+                  <View
+                    key={
+                      experience.id
+                    }
+                    style={
+                      styles.entry
+                    }
+                  >
+                    <View
+                      style={
+                        styles.entryHeader
+                      }
+                    >
+                      <Text
+                        style={
+                          styles.entryTitle
+                        }
+                      >
+                        {
+                          experience.role
+                        }
+                      </Text>
+
+                      {experience
+                        .relevanceScore >
+                        0 && (
+                        <Text
+                          style={
+                            styles.relevant
+                          }
+                        >
+                          RELEVANT
+                        </Text>
+                      )}
+                    </View>
+
+                    <Text
+                      style={
+                        styles.company
+                      }
+                    >
+                      {
+                        experience.company
+                      }
+                    </Text>
+
+                    {!!meta && (
+                      <Text
+                        style={
+                          styles.metaText
+                        }
+                      >
+                        {meta}
+                      </Text>
+                    )}
+
+                    {!!experience
+                      .description && (
+                      <Text
+                        style={
+                          styles.bodyText
+                        }
+                      >
+                        {
+                          experience
+                            .description
+                        }
+                      </Text>
+                    )}
+                  </View>
+                );
+              }
+            )}
+          </>
+        )}
+
         {draft.projects.length >
           0 && (
           <>
@@ -292,143 +544,87 @@ export default function TailoredResumeDraftCard({
             />
 
             {draft.projects.map(
-              (project) => (
-                <View
-                  key={project.id}
-                  style={
-                    styles.entry
-                  }
-                >
+              (project) => {
+                const original =
+                  resume.projects.find(
+                    (item) =>
+                      item.id ===
+                      project.id
+                  );
+
+                return (
                   <View
+                    key={project.id}
                     style={
-                      styles.entryHeader
+                      styles.entry
                     }
                   >
-                    <Text
+                    <View
                       style={
-                        styles.entryTitle
+                        styles.entryHeader
                       }
                     >
-                      {project.name}
-                    </Text>
+                      <Text
+                        style={
+                          styles.entryTitle
+                        }
+                      >
+                        {project.name}
+                      </Text>
+
+                      {project
+                        .relevanceScore >
+                        0 && (
+                        <Text
+                          style={
+                            styles.relevant
+                          }
+                        >
+                          RELEVANT
+                        </Text>
+                      )}
+                    </View>
+
+                    {!!project
+                      .description && (
+                      <Text
+                        style={
+                          styles.bodyText
+                        }
+                      >
+                        {
+                          project
+                            .description
+                        }
+                      </Text>
+                    )}
 
                     {project
-                      .relevanceScore >
-                      0 && (
+                      .technologies
+                      .length > 0 && (
                       <Text
                         style={
-                          styles.relevant
+                          styles.technologyText
                         }
                       >
-                        RELEVANT
+                        {project
+                          .technologies
+                          .join(' • ')}
+                      </Text>
+                    )}
+
+                    {!!original?.link && (
+                      <Text
+                        style={
+                          styles.projectLink
+                        }
+                      >
+                        {original.link}
                       </Text>
                     )}
                   </View>
-
-                  {!!project
-                    .description && (
-                    <Text
-                      style={
-                        styles.bodyText
-                      }
-                    >
-                      {
-                        project
-                          .description
-                      }
-                    </Text>
-                  )}
-
-                  {project
-                    .technologies
-                    .length > 0 && (
-                    <Text
-                      style={
-                        styles.technologyText
-                      }
-                    >
-                      {project
-                        .technologies
-                        .join(' • ')}
-                    </Text>
-                  )}
-                </View>
-              )
-            )}
-          </>
-        )}
-
-        {draft.experience.length >
-          0 && (
-          <>
-            <SectionTitle
-              title="Experience"
-            />
-
-            {draft.experience.map(
-              (experience) => (
-                <View
-                  key={
-                    experience.id
-                  }
-                  style={
-                    styles.entry
-                  }
-                >
-                  <View
-                    style={
-                      styles.entryHeader
-                    }
-                  >
-                    <Text
-                      style={
-                        styles.entryTitle
-                      }
-                    >
-                      {
-                        experience.role
-                      }
-                    </Text>
-
-                    {experience
-                      .relevanceScore >
-                      0 && (
-                      <Text
-                        style={
-                          styles.relevant
-                        }
-                      >
-                        RELEVANT
-                      </Text>
-                    )}
-                  </View>
-
-                  <Text
-                    style={
-                      styles.company
-                    }
-                  >
-                    {
-                      experience
-                        .company
-                    }
-                  </Text>
-
-                  {!!experience
-                    .description && (
-                    <Text
-                      style={
-                        styles.bodyText
-                      }
-                    >
-                      {
-                        experience
-                          .description
-                      }
-                    </Text>
-                  )}
-                </View>
-              )
+                );
+              }
             )}
           </>
         )}
@@ -441,37 +637,63 @@ export default function TailoredResumeDraftCard({
             />
 
             {draft.education.map(
-              (education) => (
-                <View
-                  key={
-                    education.id
-                  }
-                  style={
-                    styles.entry
-                  }
-                >
-                  <Text
-                    style={
-                      styles.entryTitle
-                    }
-                  >
-                    {
-                      education
-                        .qualification
-                    }
-                  </Text>
+              (education) => {
+                const dates = [
+                  education.startDate,
+                  education.endDate,
+                ]
+                  .filter(Boolean)
+                  .join(' – ');
 
-                  <Text
+                const meta = [
+                  dates,
+                  education.location,
+                ]
+                  .filter(Boolean)
+                  .join(' | ');
+
+                return (
+                  <View
+                    key={
+                      education.id
+                    }
                     style={
-                      styles.company
+                      styles.entry
                     }
                   >
-                    {
-                      education.school
-                    }
-                  </Text>
-                </View>
-              )
+                    <Text
+                      style={
+                        styles.entryTitle
+                      }
+                    >
+                      {
+                        education
+                          .qualification
+                      }
+                    </Text>
+
+                    <Text
+                      style={
+                        styles.company
+                      }
+                    >
+                      {
+                        education.school
+                      }
+                    </Text>
+
+                    {!!meta && (
+                      <Text
+                        style={
+                          styles.metaText
+                        }
+                      >
+                        {meta}
+                      </Text>
+                    )}
+                  </View>
+                );
+              }
             )}
           </>
         )}
@@ -530,9 +752,47 @@ export default function TailoredResumeDraftCard({
         >
           {copied
             ? 'Copied ✓'
-            : 'Copy Tailored Resume'}
+            : 'Copy as Text'}
         </Text>
       </Pressable>
+
+      <Pressable
+        style={({ pressed }) => [
+          styles.exportButton,
+
+          exporting &&
+            styles.exportButtonDisabled,
+
+          pressed &&
+            styles.buttonPressed,
+        ]}
+        onPress={
+          handleExportResume
+        }
+        disabled={
+          exporting
+        }
+      >
+        <Text
+          style={
+            styles.exportButtonText
+          }
+        >
+          {exporting
+            ? 'Creating PDF...'
+            : 'Export Resume PDF'}
+        </Text>
+      </Pressable>
+
+      <Text
+        style={
+          styles.exportHint
+        }
+      >
+        PDF keeps the resume formatting.
+        Copy as Text is best for ATS
+        application fields.
+      </Text>
     </View>
   );
 }
@@ -630,6 +890,26 @@ const styles =
       fontWeight: '700',
 
       marginTop: 4,
+    },
+
+    contactText: {
+      color: '#69717E',
+
+      fontSize: 8,
+
+      lineHeight: 13,
+
+      marginTop: 5,
+    },
+
+    linkText: {
+      color: '#566B87',
+
+      fontSize: 7,
+
+      lineHeight: 12,
+
+      marginTop: 2,
     },
 
     sectionTitle: {
@@ -732,6 +1012,16 @@ const styles =
       fontWeight: '700',
 
       marginTop: 2,
+    },
+
+    metaText: {
+      color: '#7A818C',
+
+      fontSize: 7,
+
+      lineHeight: 12,
+
+      marginTop: 1,
 
       marginBottom: 4,
     },
@@ -744,6 +1034,16 @@ const styles =
       fontWeight: '700',
 
       marginTop: 5,
+    },
+
+    projectLink: {
+      color: '#566B87',
+
+      fontSize: 7,
+
+      lineHeight: 12,
+
+      marginTop: 4,
     },
 
     warningBox: {
@@ -809,6 +1109,51 @@ const styles =
       fontSize: 11,
 
       fontWeight: '900',
+    },
+
+    exportButton: {
+      alignItems: 'center',
+
+      justifyContent:
+        'center',
+
+      backgroundColor:
+        '#1D2738',
+
+      borderWidth: 1,
+
+      borderColor:
+        '#365172',
+
+      borderRadius: 11,
+
+      paddingVertical: 13,
+
+      marginTop: 9,
+    },
+
+    exportButtonDisabled: {
+      opacity: 0.55,
+    },
+
+    exportButtonText: {
+      color: '#FFFFFF',
+
+      fontSize: 11,
+
+      fontWeight: '900',
+    },
+
+    exportHint: {
+      color: '#697386',
+
+      fontSize: 8,
+
+      lineHeight: 13,
+
+      textAlign: 'center',
+
+      marginTop: 8,
     },
 
     buttonPressed: {

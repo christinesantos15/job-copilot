@@ -3,14 +3,69 @@ import AsyncStorage
 
 import {
   defaultResumeProfile,
+  ResumeCertification,
   ResumeEducation,
   ResumeExperience,
   ResumeProfile,
   ResumeProject,
+  ResumeSkillGroup,
 } from '../profile/resumeProfile';
 
 const STORAGE_KEY =
   'job-copilot:resume-profile';
+
+function createFallbackId(
+  prefix: string
+) {
+  return (
+    `${prefix}-` +
+    `${Date.now()}-` +
+    `${Math.random()
+      .toString(36)
+      .slice(2, 8)}`
+  );
+}
+
+function normalizeStringArray(
+  value: unknown
+): string[] {
+  if (!Array.isArray(value)) {
+    return [];
+  }
+
+  return value
+    .filter(
+      (
+        item
+      ): item is string =>
+        typeof item ===
+        'string'
+    )
+    .map((item) =>
+      item.trim()
+    )
+    .filter(Boolean);
+}
+
+function normalizeSkillGroup(
+  value: Partial<ResumeSkillGroup>
+): ResumeSkillGroup {
+  return {
+    id:
+      value.id ??
+      createFallbackId(
+        'skill-group'
+      ),
+
+    label:
+      value.label ?? '',
+
+    skills:
+      normalizeStringArray(
+        value.skills
+      ),
+  };
+}
 
 function normalizeExperience(
   value: Partial<ResumeExperience>
@@ -18,7 +73,9 @@ function normalizeExperience(
   return {
     id:
       value.id ??
-      `${Date.now()}-${Math.random()}`,
+      createFallbackId(
+        'experience'
+      ),
 
     company:
       value.company ?? '',
@@ -37,6 +94,11 @@ function normalizeExperience(
 
     description:
       value.description ?? '',
+
+    bullets:
+      normalizeStringArray(
+        value.bullets
+      ),
   };
 }
 
@@ -46,7 +108,9 @@ function normalizeProject(
   return {
     id:
       value.id ??
-      `${Date.now()}-${Math.random()}`,
+      createFallbackId(
+        'project'
+      ),
 
     name:
       value.name ?? '',
@@ -55,11 +119,14 @@ function normalizeProject(
       value.description ?? '',
 
     technologies:
-      Array.isArray(
+      normalizeStringArray(
         value.technologies
-      )
-        ? value.technologies
-        : [],
+      ),
+
+    bullets:
+      normalizeStringArray(
+        value.bullets
+      ),
 
     link:
       value.link ?? '',
@@ -72,7 +139,9 @@ function normalizeEducation(
   return {
     id:
       value.id ??
-      `${Date.now()}-${Math.random()}`,
+      createFallbackId(
+        'education'
+      ),
 
     school:
       value.school ?? '',
@@ -88,6 +157,32 @@ function normalizeEducation(
 
     endDate:
       value.endDate ?? '',
+
+    details:
+      normalizeStringArray(
+        value.details
+      ),
+  };
+}
+
+function normalizeCertification(
+  value: Partial<ResumeCertification>
+): ResumeCertification {
+  return {
+    id:
+      value.id ??
+      createFallbackId(
+        'certification'
+      ),
+
+    name:
+      value.name ?? '',
+
+    issuer:
+      value.issuer ?? '',
+
+    date:
+      value.date ?? '',
   };
 }
 
@@ -123,10 +218,17 @@ function normalizeResumeProfile(
       value.summary ?? '',
 
     skills:
-      Array.isArray(
+      normalizeStringArray(
         value.skills
+      ),
+
+    skillGroups:
+      Array.isArray(
+        value.skillGroups
       )
-        ? value.skills
+        ? value.skillGroups.map(
+            normalizeSkillGroup
+          )
         : [],
 
     experience:
@@ -153,6 +255,15 @@ function normalizeResumeProfile(
       )
         ? value.education.map(
             normalizeEducation
+          )
+        : [],
+
+    certifications:
+      Array.isArray(
+        value.certifications
+      )
+        ? value.certifications.map(
+            normalizeCertification
           )
         : [],
   };

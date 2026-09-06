@@ -1,3 +1,11 @@
+export type ResumeSkillGroup = {
+  id: string;
+
+  label: string;
+
+  skills: string[];
+};
+
 export type ResumeExperience = {
   id: string;
 
@@ -11,7 +19,13 @@ export type ResumeExperience = {
 
   endDate: string;
 
+  /*
+   * Kept for backward compatibility
+   * with older saved Resume Profiles.
+   */
   description: string;
+
+  bullets: string[];
 };
 
 export type ResumeProject = {
@@ -19,9 +33,15 @@ export type ResumeProject = {
 
   name: string;
 
+  /*
+   * Kept for backward compatibility
+   * with older saved Resume Profiles.
+   */
   description: string;
 
   technologies: string[];
+
+  bullets: string[];
 
   link: string;
 };
@@ -38,6 +58,18 @@ export type ResumeEducation = {
   startDate: string;
 
   endDate: string;
+
+  details: string[];
+};
+
+export type ResumeCertification = {
+  id: string;
+
+  name: string;
+
+  issuer: string;
+
+  date: string;
 };
 
 export type ResumeProfile = {
@@ -59,13 +91,25 @@ export type ResumeProfile = {
 
   summary: string;
 
+  /*
+   * Flat skills remain available because
+   * the matcher already depends on them.
+   */
   skills: string[];
+
+  /*
+   * Groups are used primarily for
+   * formatted resume output.
+   */
+  skillGroups: ResumeSkillGroup[];
 
   experience: ResumeExperience[];
 
   projects: ResumeProject[];
 
   education: ResumeEducation[];
+
+  certifications: ResumeCertification[];
 };
 
 export const defaultResumeProfile: ResumeProfile = {
@@ -89,9 +133,13 @@ export const defaultResumeProfile: ResumeProfile = {
 
   skills: [],
 
+  skillGroups: [],
+
   experience: [],
 
   projects: [],
 
   education: [],
+
+  certifications: [],
 };

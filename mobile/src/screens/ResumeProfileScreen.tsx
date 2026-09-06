@@ -14,10 +14,12 @@ import {
 } from 'react-native';
 
 import {
+  ResumeCertification,
   ResumeEducation,
   ResumeExperience,
   ResumeProfile,
   ResumeProject,
+  ResumeSkillGroup,
   defaultResumeProfile,
 } from '../profile/resumeProfile';
 
@@ -52,12 +54,38 @@ function textToArray(
     .filter(Boolean);
 }
 
+function bulletsToText(
+  values: string[]
+) {
+  return values.join('\n');
+}
+
+function textToBullets(
+  value: string
+) {
+  return value
+    .split('\n')
+    .map((item) =>
+      item
+        .replace(
+          /^[•\-*]\s*/,
+          ''
+        )
+        .trim()
+    )
+    .filter(Boolean);
+}
+
 function createId(
   prefix: string
 ) {
-  return `${prefix}-${Date.now()}-${Math.random()
-    .toString(36)
-    .slice(2, 8)}`;
+  return (
+    `${prefix}-` +
+    `${Date.now()}-` +
+    `${Math.random()
+      .toString(36)
+      .slice(2, 8)}`
+  );
 }
 
 export default function ResumeProfileScreen({
@@ -86,10 +114,6 @@ export default function ResumeProfileScreen({
     setIsSaving,
   ] = useState(false);
 
-  /*
-   * LOAD
-   */
-
   useEffect(() => {
     async function load() {
       try {
@@ -116,10 +140,6 @@ export default function ResumeProfileScreen({
     load();
   }, []);
 
-  /*
-   * GENERAL FIELDS
-   */
-
   function updateField<
     K extends keyof ResumeProfile
   >(
@@ -135,24 +155,96 @@ export default function ResumeProfileScreen({
   }
 
   /*
+   * SKILL GROUPS
+   */
+
+  function addSkillGroup() {
+    const skillGroup: ResumeSkillGroup = {
+      id:
+        createId(
+          'skill-group'
+        ),
+
+      label: '',
+
+      skills: [],
+    };
+
+    setProfile(
+      (current) => ({
+        ...current,
+
+        skillGroups: [
+          ...current.skillGroups,
+          skillGroup,
+        ],
+      })
+    );
+  }
+
+  function updateSkillGroup(
+    id: string,
+    updates:
+      Partial<ResumeSkillGroup>
+  ) {
+    setProfile(
+      (current) => ({
+        ...current,
+
+        skillGroups:
+          current.skillGroups.map(
+            (item) =>
+              item.id === id
+                ? {
+                    ...item,
+                    ...updates,
+                  }
+                : item
+          ),
+      })
+    );
+  }
+
+  function removeSkillGroup(
+    id: string
+  ) {
+    setProfile(
+      (current) => ({
+        ...current,
+
+        skillGroups:
+          current.skillGroups.filter(
+            (item) =>
+              item.id !== id
+          ),
+      })
+    );
+  }
+
+  /*
    * EXPERIENCE
    */
 
   function addExperience() {
     const experience: ResumeExperience = {
-    id: createId('experience'),
+      id:
+        createId(
+          'experience'
+        ),
 
-    company: '',
+      company: '',
 
-    role: '',
+      role: '',
 
-    location: '',
+      location: '',
 
-    startDate: '',
+      startDate: '',
 
-    endDate: '',
+      endDate: '',
 
-    description: '',
+      description: '',
+
+      bullets: [],
     };
 
     setProfile(
@@ -169,7 +261,8 @@ export default function ResumeProfileScreen({
 
   function updateExperience(
     id: string,
-    updates: Partial<ResumeExperience>
+    updates:
+      Partial<ResumeExperience>
   ) {
     setProfile(
       (current) => ({
@@ -211,15 +304,20 @@ export default function ResumeProfileScreen({
 
   function addProject() {
     const project: ResumeProject = {
-    id: createId('project'),
+      id:
+        createId(
+          'project'
+        ),
 
-    name: '',
+      name: '',
 
-    description: '',
+      description: '',
 
-    technologies: [],
+      technologies: [],
 
-    link: '',
+      bullets: [],
+
+      link: '',
     };
 
     setProfile(
@@ -236,7 +334,8 @@ export default function ResumeProfileScreen({
 
   function updateProject(
     id: string,
-    updates: Partial<ResumeProject>
+    updates:
+      Partial<ResumeProject>
   ) {
     setProfile(
       (current) => ({
@@ -278,17 +377,22 @@ export default function ResumeProfileScreen({
 
   function addEducation() {
     const education: ResumeEducation = {
-    id: createId('education'),
+      id:
+        createId(
+          'education'
+        ),
 
-    school: '',
+      school: '',
 
-    qualification: '',
+      qualification: '',
 
-    location: '',
+      location: '',
 
-    startDate: '',
+      startDate: '',
 
-    endDate: '',
+      endDate: '',
+
+      details: [],
     };
 
     setProfile(
@@ -305,7 +409,8 @@ export default function ResumeProfileScreen({
 
   function updateEducation(
     id: string,
-    updates: Partial<ResumeEducation>
+    updates:
+      Partial<ResumeEducation>
   ) {
     setProfile(
       (current) => ({
@@ -342,18 +447,89 @@ export default function ResumeProfileScreen({
   }
 
   /*
+   * CERTIFICATIONS
+   */
+
+  function addCertification() {
+    const certification:
+      ResumeCertification = {
+        id:
+          createId(
+            'certification'
+          ),
+
+        name: '',
+
+        issuer: '',
+
+        date: '',
+      };
+
+    setProfile(
+      (current) => ({
+        ...current,
+
+        certifications: [
+          ...current.certifications,
+          certification,
+        ],
+      })
+    );
+  }
+
+  function updateCertification(
+    id: string,
+    updates:
+      Partial<ResumeCertification>
+  ) {
+    setProfile(
+      (current) => ({
+        ...current,
+
+        certifications:
+          current.certifications.map(
+            (item) =>
+              item.id === id
+                ? {
+                    ...item,
+                    ...updates,
+                  }
+                : item
+          ),
+      })
+    );
+  }
+
+  function removeCertification(
+    id: string
+  ) {
+    setProfile(
+      (current) => ({
+        ...current,
+
+        certifications:
+          current.certifications.filter(
+            (item) =>
+              item.id !== id
+          ),
+      })
+    );
+  }
+
+  /*
    * SAVE
    */
 
   async function handleSave() {
-    const updatedProfile: ResumeProfile = {
-      ...profile,
+    const updatedProfile:
+      ResumeProfile = {
+        ...profile,
 
-      skills:
-        textToArray(
-          skillsText
-        ),
-    };
+        skills:
+          textToArray(
+            skillsText
+          ),
+      };
 
     try {
       setIsSaving(true);
@@ -457,7 +633,9 @@ export default function ResumeProfileScreen({
 
   return (
     <ScrollView
-      style={styles.container}
+      style={
+        styles.container
+      }
       contentContainerStyle={
         styles.content
       }
@@ -481,8 +659,16 @@ export default function ResumeProfileScreen({
           </Text>
         </Pressable>
 
-        <View style={styles.headerText}>
-          <Text style={styles.title}>
+        <View
+          style={
+            styles.headerText
+          }
+        >
+          <Text
+            style={
+              styles.title
+            }
+          >
             Resume Profile
           </Text>
 
@@ -491,13 +677,15 @@ export default function ResumeProfileScreen({
               styles.secondaryText
             }
           >
-            Tell Job Copilot what
-            you've actually done.
+            Your factual master resume.
+            Job Copilot uses this to
+            prepare applications without
+            inventing experience.
           </Text>
         </View>
       </View>
 
-      {/* BASIC INFORMATION */}
+      {/* CONTACT */}
 
       <View style={styles.card}>
         <Text
@@ -505,12 +693,10 @@ export default function ResumeProfileScreen({
             styles.sectionTitle
           }
         >
-          Basic information
+          Contact information
         </Text>
 
-        <Text style={styles.label}>
-          Name
-        </Text>
+        <FieldLabel text="Name" />
 
         <TextInput
           style={styles.input}
@@ -523,13 +709,141 @@ export default function ResumeProfileScreen({
               value
             )
           }
-          placeholder="Your name"
+          placeholder="Your professional name"
           placeholderTextColor="#6E768D"
         />
 
-        <Text style={styles.label}>
-          Professional headline
+        <FieldLabel text="Email" />
+
+        <TextInput
+          style={styles.input}
+          value={profile.email}
+          onChangeText={(
+            value
+          ) =>
+            updateField(
+              'email',
+              value
+            )
+          }
+          placeholder="Email"
+          placeholderTextColor="#6E768D"
+          autoCapitalize="none"
+          keyboardType="email-address"
+        />
+
+        <FieldLabel text="Phone" />
+
+        <TextInput
+          style={styles.input}
+          value={profile.phone}
+          onChangeText={(
+            value
+          ) =>
+            updateField(
+              'phone',
+              value
+            )
+          }
+          placeholder="Phone"
+          placeholderTextColor="#6E768D"
+          keyboardType="phone-pad"
+        />
+
+        <FieldLabel text="Location" />
+
+        <TextInput
+          style={styles.input}
+          value={profile.location}
+          onChangeText={(
+            value
+          ) =>
+            updateField(
+              'location',
+              value
+            )
+          }
+          placeholder="Singapore"
+          placeholderTextColor="#6E768D"
+        />
+
+        <FieldLabel text="LinkedIn" />
+
+        <TextInput
+          style={styles.input}
+          value={
+            profile.linkedinUrl
+          }
+          onChangeText={(
+            value
+          ) =>
+            updateField(
+              'linkedinUrl',
+              value
+            )
+          }
+          placeholder="LinkedIn URL"
+          placeholderTextColor="#6E768D"
+          autoCapitalize="none"
+        />
+
+        <FieldLabel text="GitHub" />
+
+        <TextInput
+          style={styles.input}
+          value={
+            profile.githubUrl
+          }
+          onChangeText={(
+            value
+          ) =>
+            updateField(
+              'githubUrl',
+              value
+            )
+          }
+          placeholder="GitHub URL"
+          placeholderTextColor="#6E768D"
+          autoCapitalize="none"
+        />
+
+        <FieldLabel
+          text="Portfolio"
+        />
+
+        <TextInput
+          style={styles.input}
+          value={
+            profile.portfolioUrl
+          }
+          onChangeText={(
+            value
+          ) =>
+            updateField(
+              'portfolioUrl',
+              value
+            )
+          }
+          placeholder="Portfolio URL (optional)"
+          placeholderTextColor="#6E768D"
+          autoCapitalize="none"
+        />
+      </View>
+
+      {/* PROFILE */}
+
+      <View style={styles.card}>
+        <Text
+          style={
+            styles.sectionTitle
+          }
+        >
+          Professional profile
         </Text>
+
+        <FieldLabel
+          text="Professional headline"
+        />
 
         <TextInput
           style={styles.input}
@@ -548,9 +862,7 @@ export default function ResumeProfileScreen({
           placeholderTextColor="#6E768D"
         />
 
-        <Text style={styles.label}>
-          Summary
-        </Text>
+        <FieldLabel text="Summary" />
 
         <TextInput
           style={[
@@ -566,13 +878,32 @@ export default function ResumeProfileScreen({
               value
             )
           }
-          placeholder="Short professional summary"
+          placeholder="Professional summary"
           placeholderTextColor="#6E768D"
           multiline
         />
+      </View>
 
-        <Text style={styles.label}>
-          Skills
+      {/* MASTER SKILLS */}
+
+      <View style={styles.card}>
+        <Text
+          style={
+            styles.sectionTitle
+          }
+        >
+          Master skills
+        </Text>
+
+        <Text
+          style={
+            styles.helperText
+          }
+        >
+          Keep all technologies you can
+          genuinely explain or use. These
+          remain available to matching
+          and tailoring.
         </Text>
 
         <TextInput
@@ -598,36 +929,111 @@ export default function ResumeProfileScreen({
         </Text>
       </View>
 
+      {/* SKILL GROUPS */}
+
+      <View style={styles.card}>
+        <SectionHeader
+          title="Technical skill groups"
+          onAdd={addSkillGroup}
+        />
+
+        <Text
+          style={
+            styles.helperText
+          }
+        >
+          These groups control how skills
+          appear in the formatted resume.
+        </Text>
+
+        {profile.skillGroups.length ===
+          0 && (
+          <Text
+            style={
+              styles.emptyText
+            }
+          >
+            No skill groups yet.
+          </Text>
+        )}
+
+        {profile.skillGroups.map(
+          (group) => (
+            <View
+              key={group.id}
+              style={
+                styles.entry
+              }
+            >
+              <TextInput
+                style={
+                  styles.input
+                }
+                value={
+                  group.label
+                }
+                onChangeText={(
+                  value
+                ) =>
+                  updateSkillGroup(
+                    group.id,
+                    {
+                      label:
+                        value,
+                    }
+                  )
+                }
+                placeholder="Languages"
+                placeholderTextColor="#6E768D"
+              />
+
+              <TextInput
+                style={[
+                  styles.input,
+                  styles.mediumInput,
+                ]}
+                value={
+                  arrayToText(
+                    group.skills
+                  )
+                }
+                onChangeText={(
+                  value
+                ) =>
+                  updateSkillGroup(
+                    group.id,
+                    {
+                      skills:
+                        textToArray(
+                          value
+                        ),
+                    }
+                  )
+                }
+                placeholder="Python, Java, JavaScript, TypeScript"
+                placeholderTextColor="#6E768D"
+                multiline
+              />
+
+              <RemoveButton
+                onPress={() =>
+                  removeSkillGroup(
+                    group.id
+                  )
+                }
+              />
+            </View>
+          )
+        )}
+      </View>
+
       {/* EXPERIENCE */}
 
       <View style={styles.card}>
-        <View
-          style={
-            styles.sectionHeader
-          }
-        >
-          <Text
-            style={
-              styles.sectionTitle
-            }
-          >
-            Experience
-          </Text>
-
-          <Pressable
-            onPress={
-              addExperience
-            }
-          >
-            <Text
-              style={
-                styles.addText
-              }
-            >
-              + Add
-            </Text>
-          </Pressable>
-        </View>
+        <SectionHeader
+          title="Experience"
+          onAdd={addExperience}
+        />
 
         {profile.experience.length ===
           0 && (
@@ -695,12 +1101,11 @@ export default function ResumeProfileScreen({
               />
 
               <TextInput
-                style={[
-                  styles.input,
-                  styles.largeInput,
-                ]}
+                style={
+                  styles.input
+                }
                 value={
-                  experience.description
+                  experience.location
                 }
                 onChangeText={(
                   value
@@ -708,31 +1113,157 @@ export default function ResumeProfileScreen({
                   updateExperience(
                     experience.id,
                     {
-                      description:
+                      location:
                         value,
                     }
                   )
                 }
-                placeholder="What did you do?"
+                placeholder="Location"
+                placeholderTextColor="#6E768D"
+              />
+
+              <View
+                style={
+                  styles.row
+                }
+              >
+                <TextInput
+                  style={[
+                    styles.input,
+                    styles.rowInput,
+                  ]}
+                  value={
+                    experience.startDate
+                  }
+                  onChangeText={(
+                    value
+                  ) =>
+                    updateExperience(
+                      experience.id,
+                      {
+                        startDate:
+                          value,
+                      }
+                    )
+                  }
+                  placeholder="Start date"
+                  placeholderTextColor="#6E768D"
+                />
+
+                <TextInput
+                  style={[
+                    styles.input,
+                    styles.rowInput,
+                  ]}
+                  value={
+                    experience.endDate
+                  }
+                  onChangeText={(
+                    value
+                  ) =>
+                    updateExperience(
+                      experience.id,
+                      {
+                        endDate:
+                          value,
+                      }
+                    )
+                  }
+                  placeholder="End date"
+                  placeholderTextColor="#6E768D"
+                />
+              </View>
+
+              <FieldLabel
+                text="Achievement bullets"
+              />
+
+              <TextInput
+                style={[
+                  styles.input,
+                  styles.bulletInput,
+                ]}
+                value={
+                  bulletsToText(
+                    experience.bullets
+                  )
+                }
+                onChangeText={(
+                  value
+                ) =>
+                  updateExperience(
+                    experience.id,
+                    {
+                      bullets:
+                        textToBullets(
+                          value
+                        ),
+                    }
+                  )
+                }
+                placeholder={
+                  'Built frontend features using Next.js and TypeScript.\nIntegrated authenticated REST API endpoints.\nRan QA testing across multiple release cycles.'
+                }
                 placeholderTextColor="#6E768D"
                 multiline
               />
 
-              <Pressable
+              <Text
+                style={
+                  styles.helperText
+                }
+              >
+                One factual achievement
+                per line. You do not need
+                to type the bullet symbol.
+              </Text>
+
+              {!!experience
+                .description && (
+                <View
+                  style={
+                    styles.legacyBox
+                  }
+                >
+                  <Text
+                    style={
+                      styles.legacyTitle
+                    }
+                  >
+                    Previous description
+                  </Text>
+
+                  <Text
+                    style={
+                      styles.legacyText
+                    }
+                  >
+                    {
+                      experience
+                        .description
+                    }
+                  </Text>
+
+                  <Text
+                    style={
+                      styles.helperText
+                    }
+                  >
+                    Kept for compatibility.
+                    Move its factual points
+                    into the bullet field
+                    above when ready.
+                  </Text>
+                </View>
+              )}
+
+              <RemoveButton
                 onPress={() =>
                   removeExperience(
                     experience.id
                   )
                 }
-              >
-                <Text
-                  style={
-                    styles.removeText
-                  }
-                >
-                  Remove
-                </Text>
-              </Pressable>
+              />
             </View>
           )
         )}
@@ -741,33 +1272,10 @@ export default function ResumeProfileScreen({
       {/* PROJECTS */}
 
       <View style={styles.card}>
-        <View
-          style={
-            styles.sectionHeader
-          }
-        >
-          <Text
-            style={
-              styles.sectionTitle
-            }
-          >
-            Projects
-          </Text>
-
-          <Pressable
-            onPress={
-              addProject
-            }
-          >
-            <Text
-              style={
-                styles.addText
-              }
-            >
-              + Add
-            </Text>
-          </Pressable>
-        </View>
+        <SectionHeader
+          title="Projects"
+          onAdd={addProject}
+        />
 
         {profile.projects.length ===
           0 && (
@@ -810,37 +1318,19 @@ export default function ResumeProfileScreen({
                 placeholderTextColor="#6E768D"
               />
 
-              <TextInput
-                style={[
-                  styles.input,
-                  styles.largeInput,
-                ]}
-                value={
-                  project.description
-                }
-                onChangeText={(
-                  value
-                ) =>
-                  updateProject(
-                    project.id,
-                    {
-                      description:
-                        value,
-                    }
-                  )
-                }
-                placeholder="What did you build?"
-                placeholderTextColor="#6E768D"
-                multiline
+              <FieldLabel
+                text="Technologies"
               />
 
               <TextInput
                 style={
                   styles.input
                 }
-                value={arrayToText(
-                  project.technologies
-                )}
+                value={
+                  arrayToText(
+                    project.technologies
+                  )
+                }
                 onChangeText={(
                   value
                 ) =>
@@ -858,21 +1348,113 @@ export default function ResumeProfileScreen({
                 placeholderTextColor="#6E768D"
               />
 
-              <Pressable
+              <FieldLabel
+                text="Project bullets"
+              />
+
+              <TextInput
+                style={[
+                  styles.input,
+                  styles.bulletInput,
+                ]}
+                value={
+                  bulletsToText(
+                    project.bullets
+                  )
+                }
+                onChangeText={(
+                  value
+                ) =>
+                  updateProject(
+                    project.id,
+                    {
+                      bullets:
+                        textToBullets(
+                          value
+                        ),
+                    }
+                  )
+                }
+                placeholder={
+                  'Built a mobile job-search application.\nAggregated live jobs from multiple sources.\nImplemented resume matching and application readiness.'
+                }
+                placeholderTextColor="#6E768D"
+                multiline
+              />
+
+              <FieldLabel
+                text="Repository / project link"
+              />
+
+              <TextInput
+                style={
+                  styles.input
+                }
+                value={
+                  project.link
+                }
+                onChangeText={(
+                  value
+                ) =>
+                  updateProject(
+                    project.id,
+                    {
+                      link:
+                        value,
+                    }
+                  )
+                }
+                placeholder="Project or repository URL"
+                placeholderTextColor="#6E768D"
+                autoCapitalize="none"
+              />
+
+              {!!project
+                .description && (
+                <View
+                  style={
+                    styles.legacyBox
+                  }
+                >
+                  <Text
+                    style={
+                      styles.legacyTitle
+                    }
+                  >
+                    Previous description
+                  </Text>
+
+                  <Text
+                    style={
+                      styles.legacyText
+                    }
+                  >
+                    {
+                      project
+                        .description
+                    }
+                  </Text>
+
+                  <Text
+                    style={
+                      styles.helperText
+                    }
+                  >
+                    Kept for compatibility.
+                    Move its factual points
+                    into project bullets
+                    when ready.
+                  </Text>
+                </View>
+              )}
+
+              <RemoveButton
                 onPress={() =>
                   removeProject(
                     project.id
                   )
                 }
-              >
-                <Text
-                  style={
-                    styles.removeText
-                  }
-                >
-                  Remove
-                </Text>
-              </Pressable>
+              />
             </View>
           )
         )}
@@ -881,33 +1463,10 @@ export default function ResumeProfileScreen({
       {/* EDUCATION */}
 
       <View style={styles.card}>
-        <View
-          style={
-            styles.sectionHeader
-          }
-        >
-          <Text
-            style={
-              styles.sectionTitle
-            }
-          >
-            Education
-          </Text>
-
-          <Pressable
-            onPress={
-              addEducation
-            }
-          >
-            <Text
-              style={
-                styles.addText
-              }
-            >
-              + Add
-            </Text>
-          </Pressable>
-        </View>
+        <SectionHeader
+          title="Education"
+          onAdd={addEducation}
+        />
 
         {profile.education.length ===
           0 && (
@@ -957,7 +1516,8 @@ export default function ResumeProfileScreen({
                   styles.input
                 }
                 value={
-                  education.qualification
+                  education
+                    .qualification
                 }
                 onChangeText={(
                   value
@@ -974,21 +1534,230 @@ export default function ResumeProfileScreen({
                 placeholderTextColor="#6E768D"
               />
 
-              <Pressable
+              <TextInput
+                style={
+                  styles.input
+                }
+                value={
+                  education.location
+                }
+                onChangeText={(
+                  value
+                ) =>
+                  updateEducation(
+                    education.id,
+                    {
+                      location:
+                        value,
+                    }
+                  )
+                }
+                placeholder="Location"
+                placeholderTextColor="#6E768D"
+              />
+
+              <View
+                style={
+                  styles.row
+                }
+              >
+                <TextInput
+                  style={[
+                    styles.input,
+                    styles.rowInput,
+                  ]}
+                  value={
+                    education.startDate
+                  }
+                  onChangeText={(
+                    value
+                  ) =>
+                    updateEducation(
+                      education.id,
+                      {
+                        startDate:
+                          value,
+                      }
+                    )
+                  }
+                  placeholder="Start date"
+                  placeholderTextColor="#6E768D"
+                />
+
+                <TextInput
+                  style={[
+                    styles.input,
+                    styles.rowInput,
+                  ]}
+                  value={
+                    education.endDate
+                  }
+                  onChangeText={(
+                    value
+                  ) =>
+                    updateEducation(
+                      education.id,
+                      {
+                        endDate:
+                          value,
+                      }
+                    )
+                  }
+                  placeholder="End date"
+                  placeholderTextColor="#6E768D"
+                />
+              </View>
+
+              <FieldLabel
+                text="Additional details"
+              />
+
+              <TextInput
+                style={[
+                  styles.input,
+                  styles.mediumInput,
+                ]}
+                value={
+                  bulletsToText(
+                    education.details
+                  )
+                }
+                onChangeText={(
+                  value
+                ) =>
+                  updateEducation(
+                    education.id,
+                    {
+                      details:
+                        textToBullets(
+                          value
+                        ),
+                    }
+                  )
+                }
+                placeholder={
+                  'Thesis: Simulation-Based RNN Models for Traffic Congestion in Baguio City'
+                }
+                placeholderTextColor="#6E768D"
+                multiline
+              />
+
+              <RemoveButton
                 onPress={() =>
                   removeEducation(
                     education.id
                   )
                 }
-              >
-                <Text
-                  style={
-                    styles.removeText
-                  }
-                >
-                  Remove
-                </Text>
-              </Pressable>
+              />
+            </View>
+          )
+        )}
+      </View>
+
+      {/* CERTIFICATIONS */}
+
+      <View style={styles.card}>
+        <SectionHeader
+          title="Certifications"
+          onAdd={
+            addCertification
+          }
+        />
+
+        {profile.certifications
+          .length === 0 && (
+          <Text
+            style={
+              styles.emptyText
+            }
+          >
+            No certifications added yet.
+          </Text>
+        )}
+
+        {profile.certifications.map(
+          (certification) => (
+            <View
+              key={
+                certification.id
+              }
+              style={
+                styles.entry
+              }
+            >
+              <TextInput
+                style={
+                  styles.input
+                }
+                value={
+                  certification.name
+                }
+                onChangeText={(
+                  value
+                ) =>
+                  updateCertification(
+                    certification.id,
+                    {
+                      name:
+                        value,
+                    }
+                  )
+                }
+                placeholder="Certification"
+                placeholderTextColor="#6E768D"
+              />
+
+              <TextInput
+                style={
+                  styles.input
+                }
+                value={
+                  certification.issuer
+                }
+                onChangeText={(
+                  value
+                ) =>
+                  updateCertification(
+                    certification.id,
+                    {
+                      issuer:
+                        value,
+                    }
+                  )
+                }
+                placeholder="Issuer"
+                placeholderTextColor="#6E768D"
+              />
+
+              <TextInput
+                style={
+                  styles.input
+                }
+                value={
+                  certification.date
+                }
+                onChangeText={(
+                  value
+                ) =>
+                  updateCertification(
+                    certification.id,
+                    {
+                      date:
+                        value,
+                    }
+                  )
+                }
+                placeholder="Date"
+                placeholderTextColor="#6E768D"
+              />
+
+              <RemoveButton
+                onPress={() =>
+                  removeCertification(
+                    certification.id
+                  )
+                }
+              />
             </View>
           )
         )}
@@ -997,11 +1766,18 @@ export default function ResumeProfileScreen({
       {/* ACTIONS */}
 
       <Pressable
-        style={
-          styles.saveButton
+        style={[
+          styles.saveButton,
+
+          isSaving &&
+            styles.disabledButton,
+        ]}
+        onPress={
+          handleSave
         }
-        onPress={handleSave}
-        disabled={isSaving}
+        disabled={
+          isSaving
+        }
       >
         <Text
           style={
@@ -1018,7 +1794,9 @@ export default function ResumeProfileScreen({
         style={
           styles.resetButton
         }
-        onPress={handleReset}
+        onPress={
+          handleReset
+        }
       >
         <Text
           style={
@@ -1032,49 +1810,141 @@ export default function ResumeProfileScreen({
   );
 }
 
+function FieldLabel({
+  text,
+}: {
+  text: string;
+}) {
+  return (
+    <Text
+      style={
+        styles.label
+      }
+    >
+      {text}
+    </Text>
+  );
+}
+
+function SectionHeader({
+  title,
+  onAdd,
+}: {
+  title: string;
+
+  onAdd: () => void;
+}) {
+  return (
+    <View
+      style={
+        styles.sectionHeader
+      }
+    >
+      <Text
+        style={
+          styles.sectionTitle
+        }
+      >
+        {title}
+      </Text>
+
+      <Pressable
+        onPress={
+          onAdd
+        }
+      >
+        <Text
+          style={
+            styles.addText
+          }
+        >
+          + Add
+        </Text>
+      </Pressable>
+    </View>
+  );
+}
+
+function RemoveButton({
+  onPress,
+}: {
+  onPress: () => void;
+}) {
+  return (
+    <Pressable
+      onPress={
+        onPress
+      }
+    >
+      <Text
+        style={
+          styles.removeText
+        }
+      >
+        Remove
+      </Text>
+    </Pressable>
+  );
+}
+
 const styles =
   StyleSheet.create({
     container: {
       flex: 1,
+
       backgroundColor:
         '#080D18',
     },
 
     content: {
       padding: 18,
+
       paddingBottom: 60,
     },
 
     loadingContainer: {
       flex: 1,
+
       alignItems: 'center',
+
       justifyContent:
         'center',
+
       backgroundColor:
         '#080D18',
     },
 
     header: {
       flexDirection: 'row',
+
       alignItems: 'center',
+
       marginBottom: 22,
     },
 
     backButton: {
       width: 40,
+
       height: 40,
+
       alignItems: 'center',
+
       justifyContent:
         'center',
+
       borderRadius: 12,
+
       backgroundColor:
         '#151B2B',
+
       marginRight: 12,
     },
 
     backText: {
       color: '#FFFFFF',
+
       fontSize: 30,
+
       lineHeight: 32,
     },
 
@@ -1084,103 +1954,204 @@ const styles =
 
     title: {
       color: '#FFFFFF',
+
       fontSize: 25,
+
       fontWeight: '900',
     },
 
     secondaryText: {
       color: '#858DA1',
+
       fontSize: 12,
+
       lineHeight: 18,
+
       marginTop: 3,
     },
 
     card: {
       backgroundColor:
         '#111727',
+
       borderWidth: 1,
+
       borderColor:
         '#252D42',
+
       borderRadius: 18,
+
       padding: 17,
+
       marginBottom: 15,
     },
 
     sectionHeader: {
       flexDirection: 'row',
+
       justifyContent:
         'space-between',
+
       alignItems: 'center',
+
       marginBottom: 4,
     },
 
     sectionTitle: {
       color: '#FFFFFF',
+
       fontSize: 15,
+
       fontWeight: '900',
+
       marginBottom: 8,
     },
 
     label: {
       color: '#BCC3D1',
+
       fontSize: 11,
+
       fontWeight: '800',
+
       marginTop: 12,
-      marginBottom: 7,
+
+      marginBottom: 1,
     },
 
     input: {
       color: '#FFFFFF',
+
       backgroundColor:
         '#0B101D',
+
       borderWidth: 1,
+
       borderColor:
         '#293149',
+
       borderRadius: 11,
+
       paddingHorizontal: 12,
+
       paddingVertical: 11,
+
       fontSize: 12,
+
       marginTop: 8,
+    },
+
+    row: {
+      flexDirection: 'row',
+
+      gap: 8,
+    },
+
+    rowInput: {
+      flex: 1,
+    },
+
+    mediumInput: {
+      minHeight: 68,
+
+      textAlignVertical:
+        'top',
     },
 
     largeInput: {
       minHeight: 85,
+
+      textAlignVertical:
+        'top',
+    },
+
+    bulletInput: {
+      minHeight: 120,
+
       textAlignVertical:
         'top',
     },
 
     helperText: {
       color: '#646D82',
+
       fontSize: 10,
+
       lineHeight: 15,
+
       marginTop: 7,
     },
 
     addText: {
       color: '#9B7CFF',
+
       fontSize: 12,
+
       fontWeight: '900',
     },
 
     emptyText: {
       color: '#646D82',
+
       fontSize: 11,
+
       marginTop: 8,
     },
 
     entry: {
       marginTop: 13,
+
       paddingTop: 13,
+
       borderTopWidth: 1,
+
       borderTopColor:
         '#252D42',
     },
 
+    legacyBox: {
+      backgroundColor:
+        '#171D2C',
+
+      borderWidth: 1,
+
+      borderColor:
+        '#30384D',
+
+      borderRadius: 10,
+
+      padding: 11,
+
+      marginTop: 12,
+    },
+
+    legacyTitle: {
+      color: '#AEB6C7',
+
+      fontSize: 9,
+
+      fontWeight: '900',
+
+      marginBottom: 5,
+    },
+
+    legacyText: {
+      color: '#7F879B',
+
+      fontSize: 9,
+
+      lineHeight: 15,
+    },
+
     removeText: {
       color: '#E47A88',
+
       fontSize: 10,
+
       fontWeight: '800',
+
       marginTop: 10,
+
       alignSelf:
         'flex-end',
     },
@@ -1188,27 +2159,41 @@ const styles =
     saveButton: {
       backgroundColor:
         '#7657E8',
+
       borderRadius: 13,
+
       paddingVertical: 14,
+
       alignItems: 'center',
+
       marginTop: 5,
+    },
+
+    disabledButton: {
+      opacity: 0.55,
     },
 
     saveButtonText: {
       color: '#FFFFFF',
+
       fontSize: 12,
+
       fontWeight: '900',
     },
 
     resetButton: {
       paddingVertical: 15,
+
       alignItems: 'center',
+
       marginTop: 4,
     },
 
     resetText: {
       color: '#E47A88',
+
       fontSize: 11,
+
       fontWeight: '800',
     },
   });

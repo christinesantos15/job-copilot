@@ -1,8 +1,10 @@
 import {
+  ResumeCertification,
   ResumeEducation,
   ResumeExperience,
   ResumeProfile,
   ResumeProject,
+  ResumeSkillGroup,
 } from '../profile/resumeProfile';
 
 import {
@@ -15,32 +17,66 @@ import {
 
 export type TailoredResumeExperience = {
   id: string;
+
   role: string;
+
   company: string;
+
+  location: string;
+
+  startDate: string;
+
+  endDate: string;
+
   description: string;
+
+  bullets: string[];
+
   relevanceScore: number;
 };
 
 export type TailoredResumeProject = {
   id: string;
+
   name: string;
+
   description: string;
+
   technologies: string[];
+
+  bullets: string[];
+
+  link: string;
+
   relevanceScore: number;
 };
 
 export type TailoredResumeDraft = {
   name: string;
+
   targetRole: string;
+
   headline: string;
+
   summary: string;
+
   skills: string[];
+
+  skillGroups:
+    ResumeSkillGroup[];
+
   experience:
     TailoredResumeExperience[];
+
   projects:
     TailoredResumeProject[];
+
   education:
     ResumeEducation[];
+
+  certifications:
+    ResumeCertification[];
+
   warnings: string[];
 };
 
@@ -75,6 +111,31 @@ function countMatches(
   ).length;
 }
 
+function uniqueStrings(
+  values: string[]
+) {
+  const seen =
+    new Set<string>();
+
+  return values.filter(
+    (value) => {
+      const normalized =
+        normalize(value);
+
+      if (
+        !normalized ||
+        seen.has(normalized)
+      ) {
+        return false;
+      }
+
+      seen.add(normalized);
+
+      return true;
+    }
+  );
+}
+
 function getProjectScore(
   project: ResumeProject,
   matchedSkills: string[],
@@ -85,6 +146,7 @@ function getProjectScore(
       project.name,
       project.description,
       ...project.technologies,
+      ...project.bullets,
     ].join(' ');
 
   let score =
@@ -115,6 +177,7 @@ function getExperienceScore(
       experience.role,
       experience.company,
       experience.description,
+      ...experience.bullets,
     ].join(' ');
 
   let score =
@@ -140,18 +203,29 @@ function getExperienceScore(
   return score;
 }
 
+function getSkillGroupScore(
+  group: ResumeSkillGroup,
+  matchedSkills: string[]
+) {
+  return countMatches(
+    [
+      group.label,
+      ...group.skills,
+    ].join(' '),
+    matchedSkills
+  );
+}
+
 function buildHeadline(
   job: Job,
   resume: ResumeProfile
 ) {
   /*
-   * Keep the user's professional
-   * headline exactly as written.
+   * Keep the user's factual professional
+   * headline exactly as saved.
    *
-   * Matching skills are already
-   * prioritized in the Skills section,
-   * so repeating them here makes the
-   * resume look keyword-stuffed.
+   * We do not rewrite the user's identity
+   * or claim a role they have not held.
    */
 
   if (
@@ -169,9 +243,9 @@ function buildSummary(
   matchedSkills: string[]
 ) {
   /*
-   * The user's own summary is always
-   * preferred because it is factual
-   * information they explicitly saved.
+   * Prefer the user's own professional
+   * summary because it is verified
+   * resume content.
    */
 
   if (
@@ -202,6 +276,77 @@ function buildSummary(
   );
 }
 
+function buildTailoredSkillGroups(
+  resume: ResumeProfile,
+  matchedSkills: string[]
+) {
+  /*
+   * Preserve every user-created group.
+   *
+   * Groups containing matched job skills
+   * appear first. Skills inside each group
+   * are also reordered so matching skills
+   * appear first.
+   *
+   * Nothing new is added.
+   */
+
+  const matchedNormalized =
+    new Set(
+      matchedSkills.map(
+        normalize
+      )
+    );
+
+  return resume.skillGroups
+    .map(
+      (group) => {
+        const matching =
+          group.skills.filter(
+            (skill) =>
+              matchedNormalized.has(
+                normalize(skill)
+              )
+          );
+
+        const remaining =
+          group.skills.filter(
+            (skill) =>
+              !matchedNormalized.has(
+                normalize(skill)
+              )
+          );
+
+        return {
+          ...group,
+
+          skills:
+            uniqueStrings([
+              ...matching,
+              ...remaining,
+            ]),
+
+          relevanceScore:
+            getSkillGroupScore(
+              group,
+              matchedSkills
+            ),
+        };
+      }
+    )
+    .sort(
+      (a, b) =>
+        b.relevanceScore -
+        a.relevanceScore
+    )
+    .map(
+      ({
+        relevanceScore: _,
+        ...group
+      }) => group
+    );
+}
+
 export function generateTailoredResumeDraft(
   job: Job,
   resume: ResumeProfile
@@ -215,9 +360,9 @@ export function generateTailoredResumeDraft(
   /*
    * SKILLS
    *
-   * Matching skills go first.
-   * All remaining skills still come
-   * directly from the Resume Profile.
+   * Matching verified skills go first.
+   * Remaining verified skills stay in
+   * the resume.
    */
 
   const matchedNormalized =
@@ -243,26 +388,35 @@ export function generateTailoredResumeDraft(
         )
     );
 
-  const skills = [
-    ...matchingSkills,
-    ...remainingSkills,
-  ];
+  const skills =
+    uniqueStrings([
+      ...matchingSkills,
+      ...remainingSkills,
+    ]);
+
+  const skillGroups =
+    buildTailoredSkillGroups(
+      resume,
+      match.matchedSkills
+    );
 
   /*
    * PROJECTS
    *
-   * Preserve all factual content.
-   * Only change display order based
-   * on relevance to the job.
+   * All factual project content is
+   * preserved. Relevance changes only
+   * the display order.
    */
 
   const projects =
     resume.projects
       .map(
         (project) => ({
-          id: project.id,
+          id:
+            project.id,
 
-          name: project.name,
+          name:
+            project.name,
 
           description:
             project.description,
@@ -270,6 +424,13 @@ export function generateTailoredResumeDraft(
           technologies: [
             ...project.technologies,
           ],
+
+          bullets: [
+            ...project.bullets,
+          ],
+
+          link:
+            project.link,
 
           relevanceScore:
             getProjectScore(
@@ -288,22 +449,39 @@ export function generateTailoredResumeDraft(
   /*
    * EXPERIENCE
    *
-   * Preserve factual content and
-   * prioritize relevant entries.
+   * Preserve employers, dates,
+   * locations and factual bullets.
+   * Relevance changes only order.
    */
 
   const experience =
     resume.experience
       .map(
         (item) => ({
-          id: item.id,
+          id:
+            item.id,
 
-          role: item.role,
+          role:
+            item.role,
 
-          company: item.company,
+          company:
+            item.company,
+
+          location:
+            item.location,
+
+          startDate:
+            item.startDate,
+
+          endDate:
+            item.endDate,
 
           description:
             item.description,
+
+          bullets: [
+            ...item.bullets,
+          ],
 
           relevanceScore:
             getExperienceScore(
@@ -347,6 +525,30 @@ export function generateTailoredResumeDraft(
   }
 
   if (
+    resume.experience.some(
+      (item) =>
+        item.bullets.length === 0 &&
+        item.description.trim()
+    )
+  ) {
+    warnings.push(
+      'Some experience entries still use the older paragraph description. Add factual achievement bullets when ready.'
+    );
+  }
+
+  if (
+    resume.projects.some(
+      (item) =>
+        item.bullets.length === 0 &&
+        item.description.trim()
+    )
+  ) {
+    warnings.push(
+      'Some projects still use the older paragraph description. Add factual project bullets when ready.'
+    );
+  }
+
+  if (
     match.missingSkills.length >
     0
   ) {
@@ -383,13 +585,29 @@ export function generateTailoredResumeDraft(
 
     skills,
 
+    skillGroups,
+
     experience,
 
     projects,
 
-    education: [
-      ...resume.education,
-    ],
+    education:
+      resume.education.map(
+        (item) => ({
+          ...item,
+
+          details: [
+            ...item.details,
+          ],
+        })
+      ),
+
+    certifications:
+      resume.certifications.map(
+        (item) => ({
+          ...item,
+        })
+      ),
 
     warnings,
   };
