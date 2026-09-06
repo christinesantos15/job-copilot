@@ -13,7 +13,10 @@ import {
   View,
 } from 'react-native';
 
-import { Job } from '../types/Job';
+import {
+  ApplicationStatus,
+  Job,
+} from '../types/Job';
 
 type TrackingUpdates =
   Partial<
@@ -27,7 +30,6 @@ type TrackingUpdates =
 
 type JobDetailsScreenProps = {
   job: Job;
-
   onBack: () => void;
 
   onNotesChange?: (
@@ -39,18 +41,57 @@ type JobDetailsScreenProps = {
     jobId: string,
     updates: TrackingUpdates
   ) => void;
+
+  onStatusChange?: (
+    jobId: string,
+    status: ApplicationStatus
+  ) => void;
 };
+
+const applicationStatuses: {
+  value: ApplicationStatus;
+  label: string;
+}[] = [
+  {
+    value: 'interested',
+    label: 'Interested',
+  },
+  {
+    value: 'applied',
+    label: 'Applied',
+  },
+  {
+    value: 'interview',
+    label: 'Interview',
+  },
+  {
+    value: 'offer',
+    label: 'Offer',
+  },
+  {
+    value: 'rejected',
+    label: 'Rejected',
+  },
+];
+
+function formatStatus(
+  status: ApplicationStatus
+) {
+  return (
+    status
+      .charAt(0)
+      .toUpperCase() +
+    status.slice(1)
+  );
+}
 
 export default function JobDetailsScreen({
   job,
   onBack,
   onNotesChange,
   onTrackingChange,
+  onStatusChange,
 }: JobDetailsScreenProps) {
-  /*
-   * NOTES
-   */
-
   const [
     notes,
     setNotes,
@@ -65,13 +106,16 @@ export default function JobDetailsScreen({
     job.notes ?? ''
   );
 
-  /*
-   * APPLICATION TRACKING
-   */
-
   const [
     appliedDate,
     setAppliedDate,
+  ] = useState(
+    job.appliedDate ?? ''
+  );
+
+  const [
+    savedAppliedDate,
+    setSavedAppliedDate,
   ] = useState(
     job.appliedDate ?? ''
   );
@@ -84,24 +128,17 @@ export default function JobDetailsScreen({
   );
 
   const [
-    followUpDate,
-    setFollowUpDate,
-  ] = useState(
-    job.followUpDate ?? ''
-  );
-
-  const [
-    savedAppliedDate,
-    setSavedAppliedDate,
-  ] = useState(
-    job.appliedDate ?? ''
-  );
-
-  const [
     savedInterviewDate,
     setSavedInterviewDate,
   ] = useState(
     job.interviewDate ?? ''
+  );
+
+  const [
+    followUpDate,
+    setFollowUpDate,
+  ] = useState(
+    job.followUpDate ?? ''
   );
 
   const [
@@ -112,49 +149,52 @@ export default function JobDetailsScreen({
   );
 
   /*
-   * SYNC WHEN SELECTED JOB CHANGES
+   * Keep local form state synced
+   * with the selected job.
    */
-
   useEffect(() => {
-    const currentNotes =
+    const nextNotes =
       job.notes ?? '';
 
-    setNotes(currentNotes);
-    setSavedNotes(
-      currentNotes
-    );
-
-    const currentAppliedDate =
+    const nextAppliedDate =
       job.appliedDate ?? '';
 
-    const currentInterviewDate =
+    const nextInterviewDate =
       job.interviewDate ?? '';
 
-    const currentFollowUpDate =
+    const nextFollowUpDate =
       job.followUpDate ?? '';
 
+    setNotes(
+      nextNotes
+    );
+
+    setSavedNotes(
+      nextNotes
+    );
+
     setAppliedDate(
-      currentAppliedDate
+      nextAppliedDate
     );
 
     setSavedAppliedDate(
-      currentAppliedDate
+      nextAppliedDate
     );
 
     setInterviewDate(
-      currentInterviewDate
+      nextInterviewDate
     );
 
     setSavedInterviewDate(
-      currentInterviewDate
+      nextInterviewDate
     );
 
     setFollowUpDate(
-      currentFollowUpDate
+      nextFollowUpDate
     );
 
     setSavedFollowUpDate(
-      currentFollowUpDate
+      nextFollowUpDate
     );
   }, [
     job.id,
@@ -164,18 +204,14 @@ export default function JobDetailsScreen({
     job.followUpDate,
   ]);
 
-  const canEditNotes =
-    Boolean(onNotesChange);
+  const currentStatus =
+    job.applicationStatus ??
+    'interested';
 
-  const canEditTracking =
-    Boolean(
-      onTrackingChange
-    );
-
-  const hasUnsavedNotes =
+  const notesChanged =
     notes !== savedNotes;
 
-  const hasUnsavedTracking =
+  const trackingChanged =
     appliedDate !==
       savedAppliedDate ||
     interviewDate !==
@@ -183,45 +219,26 @@ export default function JobDetailsScreen({
     followUpDate !==
       savedFollowUpDate;
 
-  /*
-   * ORIGINAL LISTING
-   */
-
-  async function openSource() {
-    try {
-      const supported =
-        await Linking.canOpenURL(
-          job.sourceUrl
-        );
-
-      if (supported) {
-        await Linking.openURL(
-          job.sourceUrl
-        );
-      }
-    } catch (error) {
-      console.error(
-        'Failed to open job source:',
-        error
-      );
-    }
-  }
-
-  /*
-   * NOTES
-   */
-
   function saveNotes() {
     if (!onNotesChange) {
       return;
     }
 
+    const trimmedNotes =
+      notes.trim();
+
     onNotesChange(
       job.id,
-      notes
+      trimmedNotes
     );
 
-    setSavedNotes(notes);
+    setNotes(
+      trimmedNotes
+    );
+
+    setSavedNotes(
+      trimmedNotes
+    );
   }
 
   function clearNotes() {
@@ -238,51 +255,54 @@ export default function JobDetailsScreen({
     );
   }
 
-  /*
-   * APPLICATION TIMELINE
-   */
-
   function saveTracking() {
     if (!onTrackingChange) {
       return;
     }
 
+    const nextAppliedDate =
+      appliedDate.trim();
+
+    const nextInterviewDate =
+      interviewDate.trim();
+
+    const nextFollowUpDate =
+      followUpDate.trim();
+
     onTrackingChange(
       job.id,
       {
         appliedDate:
-          appliedDate.trim(),
-
+          nextAppliedDate,
         interviewDate:
-          interviewDate.trim(),
-
+          nextInterviewDate,
         followUpDate:
-          followUpDate.trim(),
+          nextFollowUpDate,
       }
     );
 
-    setSavedAppliedDate(
-      appliedDate.trim()
-    );
-
-    setSavedInterviewDate(
-      interviewDate.trim()
-    );
-
-    setSavedFollowUpDate(
-      followUpDate.trim()
-    );
-
     setAppliedDate(
-      appliedDate.trim()
+      nextAppliedDate
+    );
+
+    setSavedAppliedDate(
+      nextAppliedDate
     );
 
     setInterviewDate(
-      interviewDate.trim()
+      nextInterviewDate
+    );
+
+    setSavedInterviewDate(
+      nextInterviewDate
     );
 
     setFollowUpDate(
-      followUpDate.trim()
+      nextFollowUpDate
+    );
+
+    setSavedFollowUpDate(
+      nextFollowUpDate
     );
   }
 
@@ -292,11 +312,12 @@ export default function JobDetailsScreen({
     }
 
     setAppliedDate('');
-    setInterviewDate('');
-    setFollowUpDate('');
-
     setSavedAppliedDate('');
+
+    setInterviewDate('');
     setSavedInterviewDate('');
+
+    setFollowUpDate('');
     setSavedFollowUpDate('');
 
     onTrackingChange(
@@ -309,6 +330,34 @@ export default function JobDetailsScreen({
     );
   }
 
+  function updateStatus(
+    status: ApplicationStatus
+  ) {
+    if (!onStatusChange) {
+      return;
+    }
+
+    onStatusChange(
+      job.id,
+      status
+    );
+  }
+
+  function openOriginalListing() {
+    if (!job.sourceUrl) {
+      return;
+    }
+
+    Linking.openURL(
+      job.sourceUrl
+    ).catch((error) => {
+      console.error(
+        'Failed to open job listing:',
+        error
+      );
+    });
+  }
+
   return (
     <ScrollView
       style={styles.screen}
@@ -318,281 +367,362 @@ export default function JobDetailsScreen({
       showsVerticalScrollIndicator={
         false
       }
-      keyboardShouldPersistTaps="handled"
     >
-      <Pressable
-        style={styles.backButton}
-        onPress={onBack}
+      {/* HEADER */}
+
+      <View
+        style={styles.header}
       >
-        <Text
-          style={styles.backIcon}
+        <Pressable
+          style={({ pressed }) => [
+            styles.backButton,
+            pressed &&
+              styles.buttonPressed,
+          ]}
+          onPress={onBack}
         >
-          ‹
-        </Text>
+          <Text
+            style={
+              styles.backButtonText
+            }
+          >
+            ‹
+          </Text>
+        </Pressable>
 
         <Text
-          style={styles.backText}
+          style={styles.headerTitle}
         >
-          Back
+          Job details
         </Text>
-      </Pressable>
 
-      {/* JOB HERO */}
+        <View
+          style={
+            styles.headerSpacer
+          }
+        />
+      </View>
+
+      {/* HERO */}
 
       <View
         style={styles.heroCard}
       >
         <View
-          style={styles.topRow}
+          style={
+            styles.companyIcon
+          }
         >
-          <View
-            style={styles.badge}
-          >
-            <Text
-              style={
-                styles.badgeText
-              }
-            >
-              Recommended
-            </Text>
-          </View>
-
           <Text
-            style={styles.source}
+            style={
+              styles.companyInitial
+            }
           >
-            {job.sourceLabel ??
-              job.source}
+            {job.company
+              .charAt(0)
+              .toUpperCase()}
           </Text>
         </View>
 
         <Text
-          style={styles.title}
+          style={styles.jobTitle}
         >
           {job.title}
         </Text>
 
+        <Text
+          style={styles.company}
+        >
+          {job.company}
+        </Text>
+
         <View
-          style={
-            styles.companyRow
-          }
+          style={styles.heroMeta}
         >
           <View
-            style={
-              styles.companyIcon
-            }
+            style={styles.metaPill}
           >
             <Text
               style={
-                styles.companyInitial
+                styles.metaPillText
               }
-            >
-              {job.company
-                .charAt(0)
-                .toUpperCase()}
-            </Text>
-          </View>
-
-          <View
-            style={
-              styles.companyInfo
-            }
-          >
-            <Text
-              style={styles.company}
-              numberOfLines={1}
-            >
-              {job.company}
-            </Text>
-
-            <Text
-              style={styles.location}
             >
               {job.location}
             </Text>
           </View>
-        </View>
 
-        <View
-          style={styles.infoGrid}
-        >
           <View
-            style={styles.infoItem}
+            style={styles.metaPill}
           >
             <Text
               style={
-                styles.infoLabel
-              }
-            >
-              TYPE
-            </Text>
-
-            <Text
-              style={
-                styles.infoValue
+                styles.metaPillText
               }
             >
               {job.type}
             </Text>
           </View>
-
-          {job.salary && (
-            <View
-              style={
-                styles.infoItem
-              }
-            >
-              <Text
-                style={
-                  styles.infoLabel
-                }
-              >
-                SALARY
-              </Text>
-
-              <Text
-                style={
-                  styles.infoValue
-                }
-              >
-                {job.salary}
-              </Text>
-            </View>
-          )}
-
-          {job.postedDate && (
-            <View
-              style={
-                styles.infoItem
-              }
-            >
-              <Text
-                style={
-                  styles.infoLabel
-                }
-              >
-                POSTED
-              </Text>
-
-              <Text
-                style={
-                  styles.infoValue
-                }
-              >
-                {job.postedDate}
-              </Text>
-            </View>
-          )}
-
-          {job.closingDate && (
-            <View
-              style={
-                styles.infoItem
-              }
-            >
-              <Text
-                style={
-                  styles.infoLabel
-                }
-              >
-                CLOSING
-              </Text>
-
-              <Text
-                style={
-                  styles.infoValue
-                }
-              >
-                {job.closingDate}
-              </Text>
-            </View>
-          )}
         </View>
+
+        {job.salary && (
+          <Text
+            style={styles.salary}
+          >
+            {job.salary}
+          </Text>
+        )}
+
+        {job.matchScore !==
+          undefined && (
+          <View
+            style={
+              styles.matchContainer
+            }
+          >
+            <Text
+              style={
+                styles.matchScore
+              }
+            >
+              {job.matchScore}% match
+            </Text>
+          </View>
+        )}
       </View>
+
+      {/* APPLICATION STATUS */}
+
+      {onStatusChange && (
+        <View
+          style={styles.sectionCard}
+        >
+          <View
+            style={
+              styles.sectionHeaderRow
+            }
+          >
+            <View style={{ flex: 1 }}>
+              <Text
+                style={
+                  styles.sectionTitle
+                }
+              >
+                Application status
+              </Text>
+
+              <Text
+                style={
+                  styles.sectionDescription
+                }
+              >
+                Update where this
+                application is in your
+                pipeline.
+              </Text>
+            </View>
+
+            <View
+              style={
+                styles.currentStatusBadge
+              }
+            >
+              <Text
+                style={
+                  styles.currentStatusText
+                }
+              >
+                {formatStatus(
+                  currentStatus
+                )}
+              </Text>
+            </View>
+          </View>
+
+          <View
+            style={
+              styles.statusOptions
+            }
+          >
+            {applicationStatuses.map(
+              ({
+                value,
+                label,
+              }) => {
+                const selected =
+                  currentStatus ===
+                  value;
+
+                return (
+                  <Pressable
+                    key={value}
+                    style={({
+                      pressed,
+                    }) => [
+                      styles.statusOption,
+
+                      selected &&
+                        styles.statusOptionSelected,
+
+                      pressed &&
+                        styles.buttonPressed,
+                    ]}
+                    onPress={() =>
+                      updateStatus(
+                        value
+                      )
+                    }
+                  >
+                    <Text
+                      style={[
+                        styles.statusOptionText,
+
+                        selected &&
+                          styles.statusOptionTextSelected,
+                      ]}
+                    >
+                      {label}
+                    </Text>
+                  </Pressable>
+                );
+              }
+            )}
+          </View>
+
+          <Text
+            style={
+              styles.statusHint
+            }
+          >
+            Status changes are saved
+            automatically.
+          </Text>
+        </View>
+      )}
 
       {/* ABOUT */}
 
       <View
-        style={styles.section}
+        style={styles.sectionCard}
       >
         <Text
-          style={
-            styles.sectionTitle
-          }
+          style={styles.sectionTitle}
         >
           About the role
         </Text>
 
         <Text
-          style={
-            styles.description
-          }
+          style={styles.description}
         >
-          {job.description ||
-            'No description available for this job.'}
+          {job.description}
         </Text>
       </View>
 
       {/* SKILLS */}
 
-      {job.skills &&
-        job.skills.length > 0 && (
+      {job.skills.length > 0 && (
+        <View
+          style={styles.sectionCard}
+        >
+          <Text
+            style={
+              styles.sectionTitle
+            }
+          >
+            Skills
+          </Text>
+
           <View
-            style={styles.section}
+            style={
+              styles.skillsContainer
+            }
+          >
+            {job.skills.map(
+              (skill) => (
+                <View
+                  key={skill}
+                  style={
+                    styles.skillChip
+                  }
+                >
+                  <Text
+                    style={
+                      styles.skillText
+                    }
+                  >
+                    {skill}
+                  </Text>
+                </View>
+              )
+            )}
+          </View>
+        </View>
+      )}
+
+      {/* MATCH REASONS */}
+
+      {job.matchReasons &&
+        job.matchReasons.length >
+          0 && (
+          <View
+            style={
+              styles.sectionCard
+            }
           >
             <Text
               style={
                 styles.sectionTitle
               }
             >
-              Skills
+              Why it matches
             </Text>
 
-            <View
-              style={styles.skills}
-            >
-              {job.skills.map(
-                (skill) => (
-                  <View
-                    key={skill}
+            {job.matchReasons.map(
+              (
+                reason,
+                index
+              ) => (
+                <View
+                  key={`${reason}-${index}`}
+                  style={
+                    styles.reasonRow
+                  }
+                >
+                  <Text
                     style={
-                      styles.skillChip
+                      styles.reasonBullet
                     }
                   >
-                    <Text
-                      style={
-                        styles.skillText
-                      }
-                    >
-                      {skill}
-                    </Text>
-                  </View>
-                )
-              )}
-            </View>
+                    ✓
+                  </Text>
+
+                  <Text
+                    style={
+                      styles.reasonText
+                    }
+                  >
+                    {reason}
+                  </Text>
+                </View>
+              )
+            )}
           </View>
         )}
 
       {/* APPLICATION TIMELINE */}
 
-      {canEditTracking && (
+      {onTrackingChange && (
         <View
-          style={
-            styles.trackingSection
-          }
+          style={styles.sectionCard}
         >
           <View
             style={
-              styles.trackingHeader
+              styles.sectionHeaderRow
             }
           >
-            <View
-              style={
-                styles.trackingHeaderText
-              }
-            >
+            <View style={{ flex: 1 }}>
               <Text
                 style={
-                  styles.trackingTitle
+                  styles.sectionTitle
                 }
               >
                 Application timeline
@@ -600,22 +730,19 @@ export default function JobDetailsScreen({
 
               <Text
                 style={
-                  styles.trackingSubtitle
+                  styles.sectionDescription
                 }
               >
-                Track when you
-                applied, upcoming
-                interviews and when
-                you should follow up.
+                Track application,
+                interview and follow-up
+                dates.
               </Text>
             </View>
 
-            {!hasUnsavedTracking &&
-              (
-                appliedDate ||
-                interviewDate ||
-                followUpDate
-              ) && (
+            {!trackingChanged &&
+              (savedAppliedDate ||
+                savedInterviewDate ||
+                savedFollowUpDate) && (
                 <View
                   style={
                     styles.savedBadge
@@ -632,140 +759,138 @@ export default function JobDetailsScreen({
               )}
           </View>
 
-          <TrackingField
-            icon="✓"
-            label="Applied"
-            hint="When did you apply?"
-            placeholder="YYYY-MM-DD"
+          <Text
+            style={styles.inputLabel}
+          >
+            Applied
+          </Text>
+
+          <TextInput
+            style={styles.input}
             value={appliedDate}
             onChangeText={
               setAppliedDate
             }
+            placeholder="YYYY-MM-DD"
+            placeholderTextColor="#596176"
+            autoCapitalize="none"
           />
 
-          <View
-            style={
-              styles.timelineConnector
-            }
-          />
+          <Text
+            style={styles.inputLabel}
+          >
+            Interview
+          </Text>
 
-          <TrackingField
-            icon="◷"
-            label="Interview"
-            hint="Interview date and time"
-            placeholder="YYYY-MM-DD HH:MM"
+          <TextInput
+            style={styles.input}
             value={interviewDate}
             onChangeText={
               setInterviewDate
             }
+            placeholder="YYYY-MM-DD HH:MM"
+            placeholderTextColor="#596176"
+            autoCapitalize="none"
           />
 
-          <View
-            style={
-              styles.timelineConnector
-            }
-          />
+          <Text
+            style={styles.inputLabel}
+          >
+            Follow up
+          </Text>
 
-          <TrackingField
-            icon="↗"
-            label="Follow up"
-            hint="When should you follow up?"
-            placeholder="YYYY-MM-DD"
+          <TextInput
+            style={styles.input}
             value={followUpDate}
             onChangeText={
               setFollowUpDate
             }
+            placeholder="YYYY-MM-DD"
+            placeholderTextColor="#596176"
+            autoCapitalize="none"
           />
-
-          {hasUnsavedTracking && (
-            <Text
-              style={
-                styles.trackingUnsavedText
-              }
-            >
-              You have unsaved
-              timeline changes.
-            </Text>
-          )}
 
           <View
             style={
-              styles.trackingActions
+              styles.actionRow
             }
           >
-            {(appliedDate ||
-              interviewDate ||
-              followUpDate) && (
-              <Pressable
-                style={
-                  styles.clearTrackingButton
-                }
-                onPress={
-                  clearTracking
-                }
-              >
-                <Text
-                  style={
-                    styles.clearTrackingText
-                  }
-                >
-                  Clear
-                </Text>
-              </Pressable>
-            )}
-
             <Pressable
-              style={[
-                styles.saveTrackingButton,
+              style={({ pressed }) => [
+                styles.primaryButton,
 
-                !hasUnsavedTracking &&
-                  styles.saveTrackingButtonDisabled,
+                !trackingChanged &&
+                  styles.disabledButton,
+
+                pressed &&
+                  trackingChanged &&
+                  styles.buttonPressed,
               ]}
               disabled={
-                !hasUnsavedTracking
+                !trackingChanged
               }
               onPress={
                 saveTracking
               }
             >
               <Text
-                style={[
-                  styles.saveTrackingText,
-
-                  !hasUnsavedTracking &&
-                    styles.saveTrackingTextDisabled,
-                ]}
+                style={
+                  styles.primaryButtonText
+                }
               >
-                {hasUnsavedTracking
-                  ? 'Save timeline'
-                  : 'Timeline saved'}
+                Save timeline
               </Text>
             </Pressable>
-          </View>
-        </View>
-      )}
 
-      {/* APPLICATION NOTES */}
+            <Pressable
+              style={({ pressed }) => [
+                styles.secondaryButton,
 
-      {canEditNotes && (
-        <View
-          style={
-            styles.notesSection
-          }
-        >
-          <View
-            style={
-              styles.notesHeader
-            }
-          >
-            <View
-              style={
-                styles.notesHeaderText
+                pressed &&
+                  styles.buttonPressed,
+              ]}
+              onPress={
+                clearTracking
               }
             >
               <Text
                 style={
-                  styles.notesTitle
+                  styles.secondaryButtonText
+                }
+              >
+                Clear
+              </Text>
+            </Pressable>
+          </View>
+
+          {trackingChanged && (
+            <Text
+              style={
+                styles.unsavedText
+              }
+            >
+              Unsaved timeline
+              changes
+            </Text>
+          )}
+        </View>
+      )}
+
+      {/* NOTES */}
+
+      {onNotesChange && (
+        <View
+          style={styles.sectionCard}
+        >
+          <View
+            style={
+              styles.sectionHeaderRow
+            }
+          >
+            <View style={{ flex: 1 }}>
+              <Text
+                style={
+                  styles.sectionTitle
                 }
               >
                 Application notes
@@ -773,19 +898,17 @@ export default function JobDetailsScreen({
 
               <Text
                 style={
-                  styles.notesSubtitle
+                  styles.sectionDescription
                 }
               >
-                Keep recruiter details,
-                interview information
-                and follow-up reminders
-                here.
+                Save useful details for
+                this opportunity.
               </Text>
             </View>
 
-            {savedNotes
-              .trim()
-              .length > 0 && (
+            {!notesChanged &&
+              savedNotes.length >
+                0 && (
                 <View
                   style={
                     styles.savedBadge
@@ -803,246 +926,130 @@ export default function JobDetailsScreen({
           </View>
 
           <TextInput
+            style={
+              styles.notesInput
+            }
             value={notes}
             onChangeText={
               setNotes
             }
-            placeholder={
-              'Example:\nApplied through company website.\nRecruiter: Sarah\nPrepare React interview questions.'
-            }
-            placeholderTextColor="#5F677A"
-            style={
-              styles.notesInput
-            }
+            placeholder="Recruiter name, interview notes, things to prepare..."
+            placeholderTextColor="#596176"
             multiline
             textAlignVertical="top"
-            autoCorrect
           />
 
           <View
             style={
-              styles.notesMeta
+              styles.actionRow
             }
           >
-            <Text
-              style={
-                styles.notesCharacterCount
-              }
-            >
-              {notes.length}{' '}
-              characters
-            </Text>
-
-            {hasUnsavedNotes && (
-              <Text
-                style={
-                  styles.unsavedText
-                }
-              >
-                Unsaved changes
-              </Text>
-            )}
-          </View>
-
-          <View
-            style={
-              styles.notesActions
-            }
-          >
-            {notes.length > 0 && (
-              <Pressable
-                style={
-                  styles.clearNotesButton
-                }
-                onPress={
-                  clearNotes
-                }
-              >
-                <Text
-                  style={
-                    styles.clearNotesText
-                  }
-                >
-                  Clear
-                </Text>
-              </Pressable>
-            )}
-
             <Pressable
-              style={[
-                styles.saveNotesButton,
+              style={({ pressed }) => [
+                styles.primaryButton,
 
-                !hasUnsavedNotes &&
-                  styles.saveNotesButtonDisabled,
+                !notesChanged &&
+                  styles.disabledButton,
+
+                pressed &&
+                  notesChanged &&
+                  styles.buttonPressed,
               ]}
               disabled={
-                !hasUnsavedNotes
+                !notesChanged
               }
-              onPress={
-                saveNotes
-              }
+              onPress={saveNotes}
             >
               <Text
-                style={[
-                  styles.saveNotesText,
-
-                  !hasUnsavedNotes &&
-                    styles.saveNotesTextDisabled,
-                ]}
+                style={
+                  styles.primaryButtonText
+                }
               >
-                {hasUnsavedNotes
-                  ? 'Save notes'
-                  : 'Notes saved'}
+                Save notes
+              </Text>
+            </Pressable>
+
+            <Pressable
+              style={({ pressed }) => [
+                styles.secondaryButton,
+
+                pressed &&
+                  styles.buttonPressed,
+              ]}
+              onPress={clearNotes}
+            >
+              <Text
+                style={
+                  styles.secondaryButtonText
+                }
+              >
+                Clear
               </Text>
             </Pressable>
           </View>
+
+          {notesChanged && (
+            <Text
+              style={
+                styles.unsavedText
+              }
+            >
+              Unsaved note changes
+            </Text>
+          )}
         </View>
       )}
 
       {/* ORIGINAL LISTING */}
 
       <View
-        style={styles.sourceCard}
+        style={styles.sectionCard}
       >
-        <View
-          style={styles.sourceInfo}
+        <Text
+          style={styles.sectionTitle}
         >
-          <Text
-            style={
-              styles.sourceCardLabel
-            }
-          >
-            Original listing
-          </Text>
-
-          <Text
-            style={
-              styles.sourceCardText
-            }
-          >
-            Open the original job post
-            to review the full listing
-            and apply.
-          </Text>
-        </View>
+          Original listing
+        </Text>
 
         <Text
           style={
-            styles.sourceArrow
+            styles.sectionDescription
           }
         >
-          ↗
+          Source:{' '}
+          {job.sourceLabel ??
+            job.source}
         </Text>
+
+        <Pressable
+          style={({ pressed }) => [
+            styles.listingButton,
+
+            pressed &&
+              styles.buttonPressed,
+          ]}
+          onPress={
+            openOriginalListing
+          }
+        >
+          <Text
+            style={
+              styles.listingButtonText
+            }
+          >
+            Open job listing
+          </Text>
+
+          <Text
+            style={
+              styles.listingArrow
+            }
+          >
+            ↗
+          </Text>
+        </Pressable>
       </View>
-
-      <Pressable
-        style={
-          styles.primaryButton
-        }
-        onPress={openSource}
-      >
-        <Text
-          style={
-            styles.primaryButtonText
-          }
-        >
-          Open original job
-        </Text>
-
-        <Text
-          style={
-            styles.primaryButtonIcon
-          }
-        >
-          ↗
-        </Text>
-      </Pressable>
     </ScrollView>
-  );
-}
-
-/*
- * TIMELINE FIELD
- */
-
-type TrackingFieldProps = {
-  icon: string;
-  label: string;
-  hint: string;
-  placeholder: string;
-  value: string;
-
-  onChangeText: (
-    value: string
-  ) => void;
-};
-
-function TrackingField({
-  icon,
-  label,
-  hint,
-  placeholder,
-  value,
-  onChangeText,
-}: TrackingFieldProps) {
-  return (
-    <View
-      style={
-        styles.trackingField
-      }
-    >
-      <View
-        style={
-          styles.trackingIcon
-        }
-      >
-        <Text
-          style={
-            styles.trackingIconText
-          }
-        >
-          {icon}
-        </Text>
-      </View>
-
-      <View
-        style={
-          styles.trackingFieldContent
-        }
-      >
-        <Text
-          style={
-            styles.trackingLabel
-          }
-        >
-          {label}
-        </Text>
-
-        <Text
-          style={
-            styles.trackingHint
-          }
-        >
-          {hint}
-        </Text>
-
-        <TextInput
-          value={value}
-          onChangeText={
-            onChangeText
-          }
-          placeholder={
-            placeholder
-          }
-          placeholderTextColor="#565E72"
-          style={
-            styles.trackingInput
-          }
-          autoCapitalize="none"
-          autoCorrect={false}
-        />
-      </View>
-    </View>
   );
 }
 
@@ -1056,553 +1063,419 @@ const styles =
 
     container: {
       paddingHorizontal: 20,
-      paddingTop: 20,
-      paddingBottom: 40,
+      paddingTop: 18,
+      paddingBottom: 42,
     },
 
-    backButton: {
-      alignSelf: 'flex-start',
+    header: {
       flexDirection: 'row',
       alignItems: 'center',
-      marginBottom: 18,
-      paddingVertical: 6,
-    },
-
-    backIcon: {
-      color: '#A78BFA',
-      fontSize: 29,
-      lineHeight: 28,
-      marginRight: 3,
-    },
-
-    backText: {
-      color: '#A78BFA',
-      fontSize: 14,
-      fontWeight: '700',
-    },
-
-    heroCard: {
-      backgroundColor:
-        '#F8FAFC',
-      borderRadius: 24,
-      padding: 22,
-      marginBottom: 26,
-    },
-
-    topRow: {
-      flexDirection: 'row',
       justifyContent:
         'space-between',
-      alignItems: 'center',
       marginBottom: 18,
     },
 
-    badge: {
-      backgroundColor:
-        '#EDE9FE',
-      borderRadius: 20,
-      paddingHorizontal: 11,
-      paddingVertical: 6,
-    },
-
-    badgeText: {
-      color: '#7C3AED',
-      fontSize: 11,
-      fontWeight: '800',
-    },
-
-    source: {
-      maxWidth: '45%',
-      color: '#9298A7',
-      fontSize: 10,
-      fontWeight: '600',
-    },
-
-    title: {
-      color: '#111827',
-      fontSize: 28,
-      lineHeight: 34,
-      fontWeight: '800',
-      marginBottom: 20,
-    },
-
-    companyRow: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      marginBottom: 22,
-    },
-
-    companyIcon: {
-      width: 46,
-      height: 46,
-      borderRadius: 14,
-      backgroundColor:
-        '#EEE9FF',
-      alignItems: 'center',
-      justifyContent:
-        'center',
-      marginRight: 12,
-    },
-
-    companyInitial: {
-      color: '#7C3AED',
-      fontSize: 18,
-      fontWeight: '900',
-    },
-
-    companyInfo: {
-      flex: 1,
-    },
-
-    company: {
-      color: '#262C38',
+    headerTitle: {
+      color: '#FFFFFF',
       fontSize: 16,
       fontWeight: '800',
     },
 
-    location: {
-      color: '#777E8E',
-      fontSize: 12,
-      marginTop: 4,
+    headerSpacer: {
+      width: 42,
     },
 
-    infoGrid: {
-      gap: 12,
-    },
-
-    infoItem: {
+    backButton: {
+      width: 42,
+      height: 42,
+      borderRadius: 14,
       backgroundColor:
-        '#F1F3F7',
-      borderRadius: 12,
-      paddingHorizontal: 13,
-      paddingVertical: 11,
+        '#111727',
+      borderWidth: 1,
+      borderColor:
+        '#252C40',
+      alignItems: 'center',
+      justifyContent:
+        'center',
     },
 
-    infoLabel: {
-      color: '#969CAA',
-      fontSize: 9,
-      fontWeight: '800',
-      letterSpacing: 0.8,
-      marginBottom: 4,
+    backButtonText: {
+      color: '#A78BFA',
+      fontSize: 30,
+      lineHeight: 31,
+      marginTop: -2,
     },
 
-    infoValue: {
-      color: '#222936',
-      fontSize: 13,
+    heroCard: {
+      backgroundColor:
+        '#111727',
+      borderWidth: 1,
+      borderColor:
+        '#292F43',
+      borderRadius: 22,
+      padding: 20,
+      marginBottom: 15,
+    },
+
+    companyIcon: {
+      width: 54,
+      height: 54,
+      borderRadius: 17,
+      backgroundColor:
+        '#29204C',
+      alignItems: 'center',
+      justifyContent:
+        'center',
+      marginBottom: 16,
+    },
+
+    companyInitial: {
+      color: '#B7A1FF',
+      fontSize: 21,
+      fontWeight: '900',
+    },
+
+    jobTitle: {
+      color: '#FFFFFF',
+      fontSize: 25,
+      lineHeight: 31,
+      fontWeight: '900',
+    },
+
+    company: {
+      color: '#9CA4B7',
+      fontSize: 15,
+      fontWeight: '600',
+      marginTop: 7,
+    },
+
+    heroMeta: {
+      flexDirection: 'row',
+      flexWrap: 'wrap',
+      gap: 8,
+      marginTop: 17,
+    },
+
+    metaPill: {
+      backgroundColor:
+        '#171E2F',
+      borderRadius: 9,
+      paddingHorizontal: 10,
+      paddingVertical: 7,
+    },
+
+    metaPillText: {
+      color: '#A8B0C1',
+      fontSize: 10,
       fontWeight: '700',
     },
 
-    section: {
-      marginBottom: 26,
+    salary: {
+      color: '#FFFFFF',
+      fontSize: 15,
+      fontWeight: '800',
+      marginTop: 15,
+    },
+
+    matchContainer: {
+      alignSelf:
+        'flex-start',
+      backgroundColor:
+        '#19372F',
+      borderRadius: 9,
+      paddingHorizontal: 10,
+      paddingVertical: 7,
+      marginTop: 13,
+    },
+
+    matchScore: {
+      color: '#86E1B9',
+      fontSize: 11,
+      fontWeight: '800',
+    },
+
+    sectionCard: {
+      backgroundColor:
+        '#111727',
+      borderWidth: 1,
+      borderColor:
+        '#252C40',
+      borderRadius: 18,
+      padding: 17,
+      marginBottom: 15,
+    },
+
+    sectionHeaderRow: {
+      flexDirection: 'row',
+      alignItems:
+        'flex-start',
+      justifyContent:
+        'space-between',
+      gap: 10,
     },
 
     sectionTitle: {
       color: '#FFFFFF',
-      fontSize: 18,
+      fontSize: 17,
       fontWeight: '800',
-      marginBottom: 11,
+    },
+
+    sectionDescription: {
+      color: '#7F879B',
+      fontSize: 11,
+      lineHeight: 17,
+      marginTop: 5,
     },
 
     description: {
-      color: '#A1A8B9',
+      color: '#A5ADBE',
       fontSize: 13,
       lineHeight: 21,
+      marginTop: 12,
     },
 
-    skills: {
+    skillsContainer: {
       flexDirection: 'row',
       flexWrap: 'wrap',
       gap: 8,
+      marginTop: 13,
     },
 
     skillChip: {
       backgroundColor:
-        '#191F30',
+        '#201A38',
       borderWidth: 1,
       borderColor:
-        '#30374C',
-      borderRadius: 10,
-      paddingHorizontal: 11,
+        '#382C62',
+      borderRadius: 9,
+      paddingHorizontal: 10,
       paddingVertical: 7,
     },
 
     skillText: {
       color: '#C4B5FD',
-      fontSize: 11,
+      fontSize: 10,
       fontWeight: '700',
+    },
+
+    reasonRow: {
+      flexDirection: 'row',
+      alignItems:
+        'flex-start',
+      marginTop: 11,
+    },
+
+    reasonBullet: {
+      color: '#72D6A7',
+      width: 22,
+      fontSize: 12,
+      fontWeight: '900',
+    },
+
+    reasonText: {
+      flex: 1,
+      color: '#A5ADBE',
+      fontSize: 12,
+      lineHeight: 18,
     },
 
     /*
-     * APPLICATION TIMELINE
+     * STATUS
      */
 
-    trackingSection: {
+    currentStatusBadge: {
       backgroundColor:
-        '#111727',
-      borderWidth: 1,
-      borderColor:
-        '#252C40',
-      borderRadius: 18,
-      padding: 16,
-      marginBottom: 26,
+        '#29204C',
+      borderRadius: 9,
+      paddingHorizontal: 9,
+      paddingVertical: 6,
     },
 
-    trackingHeader: {
-      flexDirection: 'row',
-      justifyContent:
-        'space-between',
-      alignItems:
-        'flex-start',
-      marginBottom: 20,
-    },
-
-    trackingHeaderText: {
-      flex: 1,
-      paddingRight: 12,
-    },
-
-    trackingTitle: {
-      color: '#FFFFFF',
-      fontSize: 18,
-      fontWeight: '800',
-    },
-
-    trackingSubtitle: {
-      color: '#7F879A',
-      fontSize: 11,
-      lineHeight: 17,
-      marginTop: 5,
-    },
-
-    trackingField: {
-      flexDirection: 'row',
-      alignItems:
-        'flex-start',
-    },
-
-    trackingIcon: {
-      width: 34,
-      height: 34,
-      borderRadius: 17,
-      backgroundColor:
-        '#251D43',
-      borderWidth: 1,
-      borderColor:
-        '#403566',
-      alignItems: 'center',
-      justifyContent:
-        'center',
-      marginRight: 12,
-      marginTop: 2,
-    },
-
-    trackingIconText: {
-      color: '#A78BFA',
-      fontSize: 13,
-      fontWeight: '800',
-    },
-
-    trackingFieldContent: {
-      flex: 1,
-    },
-
-    trackingLabel: {
-      color: '#FFFFFF',
-      fontSize: 13,
-      fontWeight: '800',
-    },
-
-    trackingHint: {
-      color: '#747C8F',
-      fontSize: 10,
-      marginTop: 2,
-      marginBottom: 8,
-    },
-
-    trackingInput: {
-      minHeight: 44,
-      backgroundColor:
-        '#080D1A',
-      borderWidth: 1,
-      borderColor:
-        '#2A3247',
-      borderRadius: 11,
-      paddingHorizontal: 12,
-      paddingVertical: 10,
-      color: '#FFFFFF',
-      fontSize: 12,
-    },
-
-    timelineConnector: {
-      width: 1,
-      height: 18,
-      backgroundColor:
-        '#39304F',
-      marginLeft: 16,
-      marginVertical: 4,
-    },
-
-    trackingUnsavedText: {
+    currentStatusText: {
       color: '#C4B5FD',
-      fontSize: 10,
-      fontWeight: '700',
-      marginTop: 14,
+      fontSize: 9,
+      fontWeight: '900',
     },
 
-    trackingActions: {
+    statusOptions: {
       flexDirection: 'row',
-      justifyContent:
-        'flex-end',
-      alignItems: 'center',
-      gap: 9,
+      flexWrap: 'wrap',
+      gap: 8,
       marginTop: 15,
     },
 
-    clearTrackingButton: {
-      paddingHorizontal: 15,
-      paddingVertical: 11,
-      borderRadius: 11,
-      backgroundColor:
-        '#181F31',
+    statusOption: {
       borderWidth: 1,
       borderColor:
-        '#30374C',
+        '#30384D',
+      backgroundColor:
+        '#0D1321',
+      borderRadius: 10,
+      paddingHorizontal: 12,
+      paddingVertical: 10,
     },
 
-    clearTrackingText: {
-      color: '#A1A8B9',
-      fontSize: 12,
+    statusOptionSelected: {
+      borderColor:
+        '#8B5CF6',
+      backgroundColor:
+        '#2A2146',
+    },
+
+    statusOptionText: {
+      color: '#858CA0',
+      fontSize: 11,
       fontWeight: '700',
     },
 
-    saveTrackingButton: {
-      paddingHorizontal: 18,
-      paddingVertical: 11,
-      borderRadius: 11,
-      backgroundColor:
-        '#7C3AED',
+    statusOptionTextSelected: {
+      color: '#C4B5FD',
+      fontWeight: '900',
     },
 
-    saveTrackingButtonDisabled: {
-      backgroundColor:
-        '#242A3A',
-    },
-
-    saveTrackingText: {
-      color: '#FFFFFF',
-      fontSize: 12,
-      fontWeight: '800',
-    },
-
-    saveTrackingTextDisabled: {
-      color: '#747C8F',
-    },
-
-    /*
-     * SHARED SAVED BADGE
-     */
-
-    savedBadge: {
-      backgroundColor:
-        '#153B31',
-      paddingHorizontal: 9,
-      paddingVertical: 5,
-      borderRadius: 9,
-    },
-
-    savedBadgeText: {
-      color: '#8DE2C1',
+    statusHint: {
+      color: '#626B80',
       fontSize: 9,
-      fontWeight: '800',
-      textTransform:
-        'uppercase',
+      marginTop: 11,
     },
 
     /*
-     * NOTES
+     * TIMELINE / NOTES
      */
 
-    notesSection: {
+    inputLabel: {
+      color: '#A8B0C1',
+      fontSize: 10,
+      fontWeight: '800',
+      marginTop: 15,
+      marginBottom: 6,
+    },
+
+    input: {
+      height: 45,
       backgroundColor:
-        '#111727',
+        '#0C1220',
       borderWidth: 1,
       borderColor:
-        '#252C40',
-      borderRadius: 18,
-      padding: 16,
-      marginBottom: 26,
-    },
-
-    notesHeader: {
-      flexDirection: 'row',
-      justifyContent:
-        'space-between',
-      alignItems:
-        'flex-start',
-      marginBottom: 14,
-    },
-
-    notesHeaderText: {
-      flex: 1,
-      paddingRight: 12,
-    },
-
-    notesTitle: {
+        '#293146',
+      borderRadius: 11,
       color: '#FFFFFF',
-      fontSize: 18,
-      fontWeight: '800',
-    },
-
-    notesSubtitle: {
-      color: '#7F879A',
-      fontSize: 11,
-      lineHeight: 17,
-      marginTop: 5,
+      fontSize: 12,
+      paddingHorizontal: 12,
     },
 
     notesInput: {
-      minHeight: 140,
+      minHeight: 130,
       backgroundColor:
-        '#080D1A',
+        '#0C1220',
       borderWidth: 1,
       borderColor:
-        '#2A3247',
-      borderRadius: 13,
-      paddingHorizontal: 13,
-      paddingVertical: 12,
+        '#293146',
+      borderRadius: 12,
       color: '#FFFFFF',
-      fontSize: 13,
-      lineHeight: 20,
-    },
-
-    notesMeta: {
-      flexDirection: 'row',
-      justifyContent:
-        'space-between',
-      alignItems: 'center',
-      marginTop: 8,
-    },
-
-    notesCharacterCount: {
-      color: '#61697D',
-      fontSize: 10,
-    },
-
-    unsavedText: {
-      color: '#C4B5FD',
-      fontSize: 10,
-      fontWeight: '700',
-    },
-
-    notesActions: {
-      flexDirection: 'row',
-      justifyContent:
-        'flex-end',
-      alignItems: 'center',
-      gap: 9,
+      fontSize: 12,
+      lineHeight: 19,
+      padding: 12,
       marginTop: 14,
     },
 
-    clearNotesButton: {
-      paddingHorizontal: 15,
-      paddingVertical: 11,
-      borderRadius: 11,
-      backgroundColor:
-        '#181F31',
-      borderWidth: 1,
-      borderColor:
-        '#30374C',
-    },
-
-    clearNotesText: {
-      color: '#A1A8B9',
-      fontSize: 12,
-      fontWeight: '700',
-    },
-
-    saveNotesButton: {
-      paddingHorizontal: 18,
-      paddingVertical: 11,
-      borderRadius: 11,
-      backgroundColor:
-        '#7C3AED',
-    },
-
-    saveNotesButtonDisabled: {
-      backgroundColor:
-        '#242A3A',
-    },
-
-    saveNotesText: {
-      color: '#FFFFFF',
-      fontSize: 12,
-      fontWeight: '800',
-    },
-
-    saveNotesTextDisabled: {
-      color: '#747C8F',
-    },
-
-    /*
-     * SOURCE
-     */
-
-    sourceCard: {
+    actionRow: {
       flexDirection: 'row',
-      alignItems: 'center',
-      backgroundColor:
-        '#111727',
-      borderWidth: 1,
-      borderColor:
-        '#252C40',
-      borderRadius: 18,
-      padding: 16,
-      marginBottom: 14,
-    },
-
-    sourceInfo: {
-      flex: 1,
-    },
-
-    sourceCardLabel: {
-      color: '#FFFFFF',
-      fontSize: 13,
-      fontWeight: '800',
-      marginBottom: 4,
-    },
-
-    sourceCardText: {
-      color: '#7F879A',
-      fontSize: 11,
-      lineHeight: 17,
-    },
-
-    sourceArrow: {
-      color: '#A78BFA',
-      fontSize: 22,
-      marginLeft: 12,
+      gap: 9,
+      marginTop: 13,
     },
 
     primaryButton: {
-      minHeight: 54,
-      borderRadius: 15,
+      flex: 1,
       backgroundColor:
-        '#7C3AED',
-      flexDirection: 'row',
+        '#7C4DFF',
+      borderRadius: 11,
       alignItems: 'center',
       justifyContent:
         'center',
-      gap: 8,
+      paddingVertical: 12,
     },
 
     primaryButtonText: {
       color: '#FFFFFF',
-      fontSize: 14,
+      fontSize: 11,
+      fontWeight: '900',
+    },
+
+    secondaryButton: {
+      backgroundColor:
+        '#171E2F',
+      borderWidth: 1,
+      borderColor:
+        '#30384D',
+      borderRadius: 11,
+      alignItems: 'center',
+      justifyContent:
+        'center',
+      paddingHorizontal: 16,
+      paddingVertical: 12,
+    },
+
+    secondaryButtonText: {
+      color: '#9CA4B7',
+      fontSize: 11,
       fontWeight: '800',
     },
 
-    primaryButtonIcon: {
-      color: '#FFFFFF',
-      fontSize: 16,
+    disabledButton: {
+      opacity: 0.4,
+    },
+
+    buttonPressed: {
+      opacity: 0.72,
+    },
+
+    savedBadge: {
+      backgroundColor:
+        '#17372F',
+      borderRadius: 8,
+      paddingHorizontal: 8,
+      paddingVertical: 5,
+    },
+
+    savedBadgeText: {
+      color: '#7AD9AA',
+      fontSize: 9,
+      fontWeight: '900',
+    },
+
+    unsavedText: {
+      color: '#D6B75B',
+      fontSize: 9,
+      fontWeight: '700',
+      marginTop: 9,
+    },
+
+    /*
+     * ORIGINAL LISTING
+     */
+
+    listingButton: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent:
+        'space-between',
+      backgroundColor:
+        '#171E2F',
+      borderRadius: 11,
+      paddingHorizontal: 13,
+      paddingVertical: 13,
+      marginTop: 14,
+    },
+
+    listingButtonText: {
+      color: '#C4B5FD',
+      fontSize: 12,
+      fontWeight: '800',
+    },
+
+    listingArrow: {
+      color: '#A78BFA',
+      fontSize: 18,
     },
   });
