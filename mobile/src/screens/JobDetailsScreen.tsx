@@ -38,6 +38,10 @@ import {
 import ResumeMatchCard
   from '../components/ResumeMatchCard';
 
+import ApplicationReadinessCard
+  from '../components/ApplicationReadinessCard';
+
+
 type TrackingUpdates =
   Partial<
     Pick<
@@ -862,14 +866,21 @@ export default function JobDetailsScreen({
 
       {hasLoadedResume ? (
         <>
-          <ResumeMatchCard
+        <ApplicationReadinessCard
             job={job}
             resume={
               resumeProfile
             }
           />
 
-          <ApplicationCopilotCard
+        <ResumeMatchCard
+            job={job}
+            resume={
+              resumeProfile
+            }
+          />
+
+        <ApplicationCopilotCard
             job={job}
             preferences={
               preferences
