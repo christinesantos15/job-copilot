@@ -41,6 +41,9 @@ import ResumeMatchCard
 import ApplicationReadinessCard
   from '../components/ApplicationReadinessCard';
 
+import ResumeTailoringCard
+  from '../components/ResumeTailoringCard';
+
 
 type TrackingUpdates =
   Partial<
@@ -878,6 +881,11 @@ export default function JobDetailsScreen({
             resume={
               resumeProfile
             }
+          />
+
+        <ResumeTailoringCard
+            job={job}
+            resume={resumeProfile}
           />
 
         <ApplicationCopilotCard
