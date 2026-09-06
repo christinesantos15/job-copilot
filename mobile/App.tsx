@@ -1,4 +1,7 @@
-import { useEffect, useState } from 'react';
+import {
+  useEffect,
+  useState,
+} from 'react';
 
 import {
   ActivityIndicator,
@@ -80,10 +83,6 @@ export default function App() {
     defaultJobFilters
   );
 
-  /*
-   * QUICK DISCOVER SEARCH
-   */
-
   const [
     searchQuery,
     setSearchQuery,
@@ -123,7 +122,7 @@ export default function App() {
   );
 
   /*
-   * UNSEEN JOBS
+   * DISCOVER FEED
    */
 
   const unseenJobs =
@@ -133,10 +132,6 @@ export default function App() {
           job.id
         )
     );
-
-  /*
-   * SEARCH + FILTER DISCOVER FEED
-   */
 
   const feedJobs =
     unseenJobs.filter(
@@ -260,7 +255,7 @@ export default function App() {
         }
 
         /*
-         * MINIMUM MATCH SCORE
+         * MATCH SCORE
          */
 
         if (
@@ -289,16 +284,12 @@ export default function App() {
     unseenJobs.length > 0;
 
   /*
-   * CLEAR SEARCH
+   * SEARCH / FILTER HELPERS
    */
 
   function clearSearch() {
     setSearchQuery('');
   }
-
-  /*
-   * CLEAR FILTERS
-   */
 
   function clearFilters() {
     setFilters({
@@ -367,6 +358,9 @@ export default function App() {
 
   /*
    * SAVE INTERESTED JOBS
+   *
+   * Notes are part of each Job object,
+   * so they are persisted here too.
    */
 
   useEffect(() => {
@@ -410,7 +404,7 @@ export default function App() {
   ]);
 
   /*
-   * PROFILE PREFERENCES CHANGED
+   * PROFILE PREFERENCES
    */
 
   function handlePreferencesChange(
@@ -455,7 +449,7 @@ export default function App() {
   }
 
   /*
-   * MARK JOB AS SEEN
+   * MARK SEEN
    */
 
   function markJobAsSeen(
@@ -560,6 +554,66 @@ export default function App() {
               : savedJob
         )
     );
+
+    setSelectedJob(
+      (previousJob) => {
+        if (
+          !previousJob ||
+          previousJob.id !== jobId
+        ) {
+          return previousJob;
+        }
+
+        return {
+          ...previousJob,
+          applicationStatus:
+            status,
+        };
+      }
+    );
+  }
+
+  /*
+   * APPLICATION NOTES
+   */
+
+  function handleNotesChange(
+    jobId: string,
+    notes: string
+  ) {
+    setInterestedJobs(
+      (previousJobs) =>
+        previousJobs.map(
+          (savedJob) =>
+            savedJob.id === jobId
+              ? {
+                  ...savedJob,
+                  notes,
+                }
+              : savedJob
+        )
+    );
+
+    setSelectedJob(
+      (previousJob) => {
+        if (
+          !previousJob ||
+          previousJob.id !== jobId
+        ) {
+          return previousJob;
+        }
+
+        return {
+          ...previousJob,
+          notes,
+        };
+      }
+    );
+
+    console.log(
+      'Application notes saved:',
+      jobId
+    );
   }
 
   /*
@@ -616,12 +670,9 @@ export default function App() {
   /*
    * RESTART DISCOVER FEED
    *
-   * - Clear seen jobs
-   * - Clear search
-   * - Clear filters
-   * - Preserve Matches
-   * - Preserve Applications
-   * - Preserve Profile preferences
+   * Only the Discover session is reset.
+   * Saved jobs, statuses, notes and
+   * preferences are preserved.
    */
 
   async function restartFeed() {
@@ -640,11 +691,6 @@ export default function App() {
         );
 
       setSeenJobIds([]);
-
-      /*
-       * Clear temporary Discover
-       * search and filters.
-       */
 
       setSearchQuery('');
 
@@ -718,6 +764,13 @@ export default function App() {
    */
 
   if (selectedJob) {
+    const isSavedJob =
+      interestedJobs.some(
+        (savedJob) =>
+          savedJob.id ===
+          selectedJob.id
+      );
+
     return (
       <View
         style={styles.app}
@@ -726,9 +779,18 @@ export default function App() {
           style={styles.content}
         >
           <JobDetailsScreen
-            job={selectedJob}
+            job={
+              selectedJob
+            }
+
             onBack={
               closeJobDetails
+            }
+
+            onNotesChange={
+              isSavedJob
+                ? handleNotesChange
+                : undefined
             }
           />
         </View>
@@ -737,6 +799,7 @@ export default function App() {
           activeTab={
             activeTab
           }
+
           onTabChange={(tab) => {
             setSelectedJob(null);
             setDetailsOrigin(null);
@@ -761,9 +824,7 @@ export default function App() {
         {activeTab ===
           'discover' && (
           <JobFeedScreen
-            job={
-              job
-            }
+            job={job}
 
             interestedCount={
               interestedJobs.length

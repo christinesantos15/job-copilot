@@ -1,4 +1,4 @@
-export type JobSourceType = 
+export type JobSourceType =
   | 'linkedin'
   | 'mycareersfuture'
   | 'indeed'
@@ -15,27 +15,22 @@ export type ApplicationStatus =
 
 export type Job = {
   id: string;
-
   title: string;
   company: string;
   location: string;
-
   salary?: string;
   type: string;
-
   source: JobSourceType;
   sourceLabel: string;
   sourceUrl: string;
-
   description: string;
-
   postedDate?: string;
   closingDate?: string;
-
   skills: string[];
-
   applicationStatus?: ApplicationStatus;
-
   matchScore?: number;
   matchReasons?: string[];
+
+  // User-written application tracking notes.
+  notes?: string;
 };
