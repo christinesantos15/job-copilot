@@ -11,6 +11,30 @@ import {
   Job,
 } from '../types/Job';
 
+import {
+  useEffect,
+  useMemo,
+  useState,
+} from 'react';
+
+import {
+  defaultResumeProfile,
+  ResumeProfile,
+} from '../profile/resumeProfile';
+
+import {
+  loadResumeProfile,
+} from '../storage/resumeProfileStorage';
+
+import {
+  analyzeApplicationReadiness,
+} from '../matching/applicationReadiness';
+
+import {
+  analyzeResumeMatch,
+} from '../matching/resumeMatchAnalysis';
+
+
 type InterestedJobsScreenProps = {
   interestedJobs: Job[];
   onBack: () => void;
@@ -61,6 +85,101 @@ export default function InterestedJobsScreen({
   onViewDetails,
   onStatusChange,
 }: InterestedJobsScreenProps) {
+    const [
+    resumeProfile,
+    setResumeProfile,
+  ] = useState<ResumeProfile>(
+    defaultResumeProfile
+  );
+
+  const [
+    hasLoadedResume,
+    setHasLoadedResume,
+  ] = useState(false);
+
+  useEffect(() => {
+    let isMounted = true;
+
+    async function loadResume() {
+      try {
+        const savedResume =
+          await loadResumeProfile();
+
+        if (isMounted) {
+          setResumeProfile(
+            savedResume
+          );
+        }
+      } catch (error) {
+        console.error(
+          'Failed to load Resume Profile for Matches:',
+          error
+        );
+      } finally {
+        if (isMounted) {
+          setHasLoadedResume(
+            true
+          );
+        }
+      }
+    }
+
+    loadResume();
+
+    return () => {
+      isMounted = false;
+    };
+  }, []);
+
+  const rankedJobs =
+    useMemo(() => {
+      if (!hasLoadedResume) {
+        return interestedJobs;
+      }
+
+      return [
+        ...interestedJobs,
+      ].sort(
+        (first, second) => {
+          const firstReadiness =
+            analyzeApplicationReadiness(
+              first,
+              resumeProfile
+            );
+
+          const secondReadiness =
+            analyzeApplicationReadiness(
+              second,
+              resumeProfile
+            );
+
+          if (
+            secondReadiness.score !==
+            firstReadiness.score
+          ) {
+            return (
+              secondReadiness.score -
+              firstReadiness.score
+            );
+          }
+
+          /*
+           * Tie-break using the
+           * existing Job Match score.
+           */
+
+          return (
+            (second.matchScore ?? 0) -
+            (first.matchScore ?? 0)
+          );
+        }
+      );
+    }, [
+      interestedJobs,
+      resumeProfile,
+      hasLoadedResume,
+    ]);
+
   return (
     <ScrollView
       style={styles.screen}
@@ -82,8 +201,8 @@ export default function InterestedJobsScreen({
           </Text>
 
           <Text style={styles.subtitle}>
-            Jobs you marked as
-            interesting
+            Saved jobs ranked by
+            application readiness
           </Text>
         </View>
 
@@ -164,7 +283,7 @@ export default function InterestedJobsScreen({
                 styles.sectionTitle
               }
             >
-              Your matches
+              Prioritized matches
             </Text>
 
             <Text
@@ -179,11 +298,27 @@ export default function InterestedJobsScreen({
             </Text>
           </View>
 
-          {interestedJobs.map(
+          {rankedJobs.map(
             (job) => {
               const status =
                 job.applicationStatus ??
                 'interested';
+
+              const readiness =
+                hasLoadedResume
+                  ? analyzeApplicationReadiness(
+                      job,
+                      resumeProfile
+                    )
+                  : null;
+
+              const resumeMatch =
+                hasLoadedResume
+                  ? analyzeResumeMatch(
+                      job,
+                      resumeProfile
+                    )
+                  : null;
 
               return (
                 <View
@@ -252,7 +387,98 @@ export default function InterestedJobsScreen({
                         </Text>
                       </View>
                     </View>
+                    {readiness &&
+                      resumeMatch && (
+                        <View
+                          style={
+                            styles.readinessSection
+                          }
+                        >
+                          <View
+                            style={
+                              styles.readinessTopRow
+                            }
+                          >
+                            <View
+                              style={
+                                styles.readinessBadge
+                              }
+                            >
+                              <Text
+                                style={
+                                  styles.readinessLabel
+                                }
+                              >
+                                {readiness.label}
+                              </Text>
 
+                              <Text
+                                style={
+                                  styles.readinessScore
+                                }
+                              >
+                                {readiness.score}
+                              </Text>
+                            </View>
+                          </View>
+
+                          <View
+                            style={
+                              styles.scoreRow
+                            }
+                          >
+                            <View
+                              style={
+                                styles.scoreItem
+                              }
+                            >
+                              <Text
+                                style={
+                                  styles.scoreItemLabel
+                                }
+                              >
+                                Job Match
+                              </Text>
+
+                              <Text
+                                style={
+                                  styles.jobMatchScore
+                                }
+                              >
+                                {job.matchScore ?? 0}%
+                              </Text>
+                            </View>
+
+                            <View
+                              style={
+                                styles.scoreDivider
+                              }
+                            />
+
+                            <View
+                              style={
+                                styles.scoreItem
+                              }
+                            >
+                              <Text
+                                style={
+                                  styles.scoreItemLabel
+                                }
+                              >
+                                Resume Match
+                              </Text>
+
+                              <Text
+                                style={
+                                  styles.resumeMatchScore
+                                }
+                              >
+                                {resumeMatch.score}%
+                              </Text>
+                            </View>
+                          </View>
+                        </View>
+                      )}
                     <View
                       style={
                         styles.metaRow
@@ -823,7 +1049,123 @@ const styles =
     statusButtonTextActive: {
       color: '#FFFFFF',
     },
+        readinessSection: {
+      backgroundColor:
+        '#0C1220',
 
+      borderWidth: 1,
+
+      borderColor:
+        '#282F43',
+
+      borderRadius: 12,
+
+      padding: 11,
+
+      marginBottom: 14,
+    },
+
+    readinessTopRow: {
+      flexDirection: 'row',
+
+      alignItems: 'center',
+
+      justifyContent:
+        'space-between',
+    },
+
+    readinessBadge: {
+      flexDirection: 'row',
+
+      alignItems: 'center',
+
+      justifyContent:
+        'space-between',
+
+      width: '100%',
+    },
+
+    readinessLabel: {
+      color: '#C4B5FD',
+
+      fontSize: 10,
+
+      fontWeight: '900',
+
+      textTransform:
+        'uppercase',
+
+      letterSpacing: 0.6,
+    },
+
+    readinessScore: {
+      color: '#FFFFFF',
+
+      fontSize: 15,
+
+      fontWeight: '900',
+    },
+
+    scoreRow: {
+      flexDirection: 'row',
+
+      alignItems: 'center',
+
+      marginTop: 11,
+
+      paddingTop: 10,
+
+      borderTopWidth: 1,
+
+      borderTopColor:
+        '#242B3D',
+    },
+
+    scoreItem: {
+      flex: 1,
+    },
+
+    scoreItemLabel: {
+      color: '#697287',
+
+      fontSize: 8,
+
+      fontWeight: '800',
+
+      textTransform:
+        'uppercase',
+
+      letterSpacing: 0.5,
+
+      marginBottom: 3,
+    },
+
+    jobMatchScore: {
+      color: '#A78BFA',
+
+      fontSize: 13,
+
+      fontWeight: '900',
+    },
+
+    resumeMatchScore: {
+      color: '#86E1B9',
+
+      fontSize: 13,
+
+      fontWeight: '900',
+    },
+
+    scoreDivider: {
+      width: 1,
+
+      height: 28,
+
+      backgroundColor:
+        '#293044',
+
+      marginHorizontal: 12,
+    },
     emptyState: {
       flex: 1,
       minHeight: 440,
