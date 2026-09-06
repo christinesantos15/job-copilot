@@ -60,6 +60,47 @@ type DetailsOrigin =
   | 'interested'
   | null;
 
+type TrackingUpdates =
+  Partial<
+    Pick<
+      Job,
+      | 'appliedDate'
+      | 'interviewDate'
+      | 'followUpDate'
+    >
+  >;
+
+/*
+ * Returns YYYY-MM-DD using the
+ * device's local date.
+ */
+
+function getTodayDate() {
+  const today =
+    new Date();
+
+  const year =
+    today.getFullYear();
+
+  const month =
+    String(
+      today.getMonth() + 1
+    ).padStart(
+      2,
+      '0'
+    );
+
+  const day =
+    String(
+      today.getDate()
+    ).padStart(
+      2,
+      '0'
+    );
+
+  return `${year}-${month}-${day}`;
+}
+
 export default function App() {
   const [
     availableJobs,
@@ -122,7 +163,7 @@ export default function App() {
   );
 
   /*
-   * DISCOVER FEED
+   * DISCOVER
    */
 
   const unseenJobs =
@@ -165,7 +206,7 @@ export default function App() {
         }
 
         /*
-         * KEYWORD FILTER
+         * KEYWORD
          */
 
         const keyword =
@@ -193,7 +234,7 @@ export default function App() {
         }
 
         /*
-         * LOCATION FILTER
+         * LOCATION
          */
 
         const location =
@@ -205,13 +246,15 @@ export default function App() {
           location &&
           !job.location
             .toLowerCase()
-            .includes(location)
+            .includes(
+              location
+            )
         ) {
           return false;
         }
 
         /*
-         * JOB TYPE FILTER
+         * JOB TYPE
          */
 
         const jobType =
@@ -223,13 +266,15 @@ export default function App() {
           jobType &&
           !job.type
             .toLowerCase()
-            .includes(jobType)
+            .includes(
+              jobType
+            )
         ) {
           return false;
         }
 
         /*
-         * SOURCE FILTER
+         * SOURCE
          */
 
         const source =
@@ -263,7 +308,8 @@ export default function App() {
           0
         ) {
           const matchScore =
-            job.matchScore ?? 0;
+            job.matchScore ??
+            0;
 
           if (
             matchScore <
@@ -284,7 +330,7 @@ export default function App() {
     unseenJobs.length > 0;
 
   /*
-   * SEARCH / FILTER HELPERS
+   * SEARCH + FILTER HELPERS
    */
 
   function clearSearch() {
@@ -298,7 +344,7 @@ export default function App() {
   }
 
   /*
-   * LOAD APP DATA
+   * LOAD
    */
 
   useEffect(() => {
@@ -309,12 +355,13 @@ export default function App() {
           savedSeenJobIds,
           savedPreferences,
           fetchedJobs,
-        ] = await Promise.all([
-          loadInterestedJobs(),
-          loadSeenJobIds(),
-          loadJobPreferences(),
-          fetchAllJobs(),
-        ]);
+        ] =
+          await Promise.all([
+            loadInterestedJobs(),
+            loadSeenJobIds(),
+            loadJobPreferences(),
+            fetchAllJobs(),
+          ]);
 
         const scoredJobs =
           addMatchScores(
@@ -357,10 +404,11 @@ export default function App() {
   }, []);
 
   /*
-   * SAVE INTERESTED JOBS
+   * SAVE SAVED JOBS
    *
-   * Notes are part of each Job object,
-   * so they are persisted here too.
+   * Status, notes and application
+   * timeline fields are all stored
+   * inside the Job object.
    */
 
   useEffect(() => {
@@ -382,7 +430,7 @@ export default function App() {
   ]);
 
   /*
-   * SAVE SEEN JOB IDS
+   * SAVE SEEN IDS
    */
 
   useEffect(() => {
@@ -404,7 +452,7 @@ export default function App() {
   ]);
 
   /*
-   * PROFILE PREFERENCES
+   * PREFERENCES
    */
 
   function handlePreferencesChange(
@@ -442,10 +490,6 @@ export default function App() {
         )[0];
       }
     );
-
-    console.log(
-      'Job match scores refreshed.'
-    );
   }
 
   /*
@@ -474,7 +518,7 @@ export default function App() {
   }
 
   /*
-   * INTERESTED
+   * SAVE MATCH
    */
 
   function handleInterested(
@@ -509,11 +553,6 @@ export default function App() {
     markJobAsSeen(
       selectedJob
     );
-
-    console.log(
-      'Interested:',
-      selectedJob.title
-    );
   }
 
   /*
@@ -526,15 +565,15 @@ export default function App() {
     markJobAsSeen(
       selectedJob
     );
-
-    console.log(
-      'Skipped:',
-      selectedJob.title
-    );
   }
 
   /*
    * APPLICATION STATUS
+   *
+   * When a job first becomes Applied,
+   * automatically record today's date.
+   *
+   * Existing applied dates are preserved.
    */
 
   function handleStatusChange(
@@ -544,14 +583,31 @@ export default function App() {
     setInterestedJobs(
       (previousJobs) =>
         previousJobs.map(
-          (savedJob) =>
-            savedJob.id === jobId
-              ? {
-                  ...savedJob,
-                  applicationStatus:
-                    status,
-                }
-              : savedJob
+          (savedJob) => {
+            if (
+              savedJob.id !==
+              jobId
+            ) {
+              return savedJob;
+            }
+
+            const updates: Job = {
+              ...savedJob,
+              applicationStatus:
+                status,
+            };
+
+            if (
+              status ===
+                'applied' &&
+              !savedJob.appliedDate
+            ) {
+              updates.appliedDate =
+                getTodayDate();
+            }
+
+            return updates;
+          }
         )
     );
 
@@ -559,22 +615,34 @@ export default function App() {
       (previousJob) => {
         if (
           !previousJob ||
-          previousJob.id !== jobId
+          previousJob.id !==
+            jobId
         ) {
           return previousJob;
         }
 
-        return {
+        const updates: Job = {
           ...previousJob,
           applicationStatus:
             status,
         };
+
+        if (
+          status ===
+            'applied' &&
+          !previousJob.appliedDate
+        ) {
+          updates.appliedDate =
+            getTodayDate();
+        }
+
+        return updates;
       }
     );
   }
 
   /*
-   * APPLICATION NOTES
+   * NOTES
    */
 
   function handleNotesChange(
@@ -585,7 +653,8 @@ export default function App() {
       (previousJobs) =>
         previousJobs.map(
           (savedJob) =>
-            savedJob.id === jobId
+            savedJob.id ===
+            jobId
               ? {
                   ...savedJob,
                   notes,
@@ -598,7 +667,8 @@ export default function App() {
       (previousJob) => {
         if (
           !previousJob ||
-          previousJob.id !== jobId
+          previousJob.id !==
+            jobId
         ) {
           return previousJob;
         }
@@ -609,15 +679,50 @@ export default function App() {
         };
       }
     );
+  }
 
-    console.log(
-      'Application notes saved:',
-      jobId
+  /*
+   * APPLICATION TIMELINE
+   */
+
+  function handleTrackingChange(
+    jobId: string,
+    updates: TrackingUpdates
+  ) {
+    setInterestedJobs(
+      (previousJobs) =>
+        previousJobs.map(
+          (savedJob) =>
+            savedJob.id ===
+            jobId
+              ? {
+                  ...savedJob,
+                  ...updates,
+                }
+              : savedJob
+        )
+    );
+
+    setSelectedJob(
+      (previousJob) => {
+        if (
+          !previousJob ||
+          previousJob.id !==
+            jobId
+        ) {
+          return previousJob;
+        }
+
+        return {
+          ...previousJob,
+          ...updates,
+        };
+      }
     );
   }
 
   /*
-   * OPEN DETAILS FROM DISCOVER
+   * DETAILS
    */
 
   function openJobDetailsFromFeed(
@@ -632,10 +737,6 @@ export default function App() {
     );
   }
 
-  /*
-   * OPEN DETAILS FROM MATCHES
-   */
-
   function openJobDetailsFromInterested(
     selectedJob: Job
   ) {
@@ -647,10 +748,6 @@ export default function App() {
       selectedJob
     );
   }
-
-  /*
-   * CLOSE DETAILS
-   */
 
   function closeJobDetails() {
     setSelectedJob(null);
@@ -668,11 +765,11 @@ export default function App() {
   }
 
   /*
-   * RESTART DISCOVER FEED
+   * RESTART DISCOVER
    *
-   * Only the Discover session is reset.
-   * Saved jobs, statuses, notes and
-   * preferences are preserved.
+   * Saved jobs, application status,
+   * notes, dates and preferences
+   * remain untouched.
    */
 
   async function restartFeed() {
@@ -708,20 +805,6 @@ export default function App() {
 
       setActiveTab(
         'discover'
-      );
-
-      console.log(
-        'Discover feed restarted.'
-      );
-
-      console.log(
-        'Saved matches preserved:',
-        interestedJobs.length
-      );
-
-      console.log(
-        'Jobs available:',
-        scoredJobs.length
       );
     } catch (error) {
       console.error(
@@ -760,7 +843,7 @@ export default function App() {
   }
 
   /*
-   * JOB DETAILS
+   * DETAILS SCREEN
    */
 
   if (selectedJob) {
@@ -792,6 +875,12 @@ export default function App() {
                 ? handleNotesChange
                 : undefined
             }
+
+            onTrackingChange={
+              isSavedJob
+                ? handleTrackingChange
+                : undefined
+            }
           />
         </View>
 
@@ -801,9 +890,17 @@ export default function App() {
           }
 
           onTabChange={(tab) => {
-            setSelectedJob(null);
-            setDetailsOrigin(null);
-            setActiveTab(tab);
+            setSelectedJob(
+              null
+            );
+
+            setDetailsOrigin(
+              null
+            );
+
+            setActiveTab(
+              tab
+            );
           }}
         />
       </View>

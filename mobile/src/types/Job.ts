@@ -27,10 +27,15 @@ export type Job = {
   postedDate?: string;
   closingDate?: string;
   skills: string[];
+
   applicationStatus?: ApplicationStatus;
+
   matchScore?: number;
   matchReasons?: string[];
 
-  // User-written application tracking notes.
   notes?: string;
+
+  appliedDate?: string;
+  interviewDate?: string;
+  followUpDate?: string;
 };
