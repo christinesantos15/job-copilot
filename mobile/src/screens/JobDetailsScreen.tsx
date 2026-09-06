@@ -19,6 +19,10 @@ import {
   Job,
 } from '../types/Job';
 
+import ApplicationCopilotCard
+from '../components/ApplicationCopilotCard';
+
+
 type TrackingUpdates =
   Partial<
     Pick<
@@ -779,6 +783,11 @@ export default function JobDetailsScreen({
             )}
           </View>
         )}
+
+      {/* APPLICATION COPILOT */}
+      <ApplicationCopilotCard
+        job={job}
+      />
 
       {/* APPLICATION TIMELINE */}
 
