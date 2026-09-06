@@ -49,6 +49,10 @@ import BottomNav, {
   MainTab,
 } from './src/components/BottomNav';
 
+import {
+  rankDiscoverJobs,
+} from './src/matching/discoverRanking';
+
 import InterestedJobsScreen from './src/screens/InterestedJobsScreen';
 import JobFeedScreen from './src/screens/JobFeedScreen';
 import JobDetailsScreen from './src/screens/JobDetailsScreen';
@@ -328,8 +332,13 @@ export default function App() {
       }
     );
 
+  const rankedDiscoverJobs =
+    rankDiscoverJobs(
+      feedJobs
+    );
+
   const job =
-    feedJobs[0];
+    rankedDiscoverJobs[0];  
 
   function clearFilters() {
     setFilters(
